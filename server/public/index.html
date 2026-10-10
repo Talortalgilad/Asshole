@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>פריזידנט – דף בדיקה</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #14532d; color: #fff; }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
+  .seat { padding: 6px 10px; border-radius: 8px; background: #166534; }
+  .seat.turn { outline: 3px solid #facc15; }
+  .seat.off { opacity: .5; }
+  .card { background: #fff; color: #111; border-radius: 6px; padding: 8px 6px; min-width: 38px; text-align: center;
+          font-weight: 700; cursor: pointer; user-select: none; border: 2px solid transparent; }
+  .card.red { color: #b91c1c; }
+  .card.sel { border-color: #facc15; transform: translateY(-8px); }
+  .card.small { cursor: default; padding: 4px; min-width: 30px; }
+  button { font-size: 16px; padding: 8px 18px; border-radius: 8px; border: 0; cursor: pointer; }
+  button:disabled { opacity: .4; }
+  #log { font-size: 12px; max-height: 120px; overflow: auto; background: #0004; padding: 6px; border-radius: 6px; }
+  #err { color: #fca5a5; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<h1>פריזידנט – דף בדיקה (שלב 2) · <span id="me"></span></h1>
+<div id="wait"></div>
+<div id="game" hidden>
+  <div class="row" id="seats"></div>
+  <div id="flags"></div>
+  <div class="row">שולחן: <span id="table" class="row"></span></div>
+  <div class="row" id="hand"></div>
+  <div class="row">
+    <button id="play">שים</button><button id="pass">פס</button>
+    <button id="again" hidden>משחק נוסף</button><span id="timer"></span>
+  </div>
+</div>
+<div id="err"></div>
+<div id="log"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  let uid = sessionStorage.getItem('uid');
+  if (!uid) { uid = 'u-' + Math.random().toString(36).slice(2, 10); sessionStorage.setItem('uid', uid); }
+  const name = q.get('name') || sessionStorage.getItem('name') || ('שחקן ' + uid.slice(-3));
+  sessionStorage.setItem('name', name);
+  document.getElementById('me').textContent = name;
+
+  const L = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2' };
+  const S = { C: '♣', D: '♦', H: '♥', S: '♠' };
+  const lbl = (c) => (L[c.rank] || c.rank) + S[c.suit];
+  const $ = (id) => document.getElementById(id);
+  const log = (t) => { const d = $('log'); d.insertAdjacentHTML('afterbegin', t + '<br>'); };
+  const cardEl = (c, cls = '') => `<div class="card ${cls} ${'DH'.includes(c.suit) ? 'red' : ''}" data-id="${c.id}">${lbl(c)}</div>`;
+
+  const socket = io({ auth: { uid, name } });
+  let view = null, sel = new Set();
+
+  socket.on('connect', () => socket.emit('room:join'));
+  socket.on('table:state', (t) => {
+    $('wait').textContent = t.phase === 'waiting' ? `ממתינים לשחקנים: ${t.players.length}/${t.needed} – ${t.players.map(p => p.name).join(', ')}` : '';
+  });
+  socket.on('game:state', (v) => { view = v; sel = new Set([...sel].filter(id => v.hand.some(c => c.id === id))); render(); });
+  socket.on('game:event', (e) => log(JSON.stringify(e)));
+  socket.on('game:over', (o) => log('סיום: ' + o.results.map(r => r.place + '. ' + r.name).join(' | ')));
+  socket.on('game:error', (e) => { $('err').textContent = e.message; setTimeout(() => $('err').textContent = '', 3000); });
+
+  function render() {
+    $('game').hidden = false;
+    const v = view, myTurn = v.turn === v.me && v.phase === 'playing';
+    $('seats').innerHTML = v.seats.map(s =>
+      `<div class="seat ${s.id === v.turn && v.phase === 'playing' ? 'turn' : ''} ${s.connected ? '' : 'off'}">${s.name}${s.isMe ? ' (אני)' : ''} · ${s.cardCount} קלפים${s.place ? ' · מקום ' + s.place : ''}</div>`).join('');
+    const t = v.trick, last = t.plays[t.plays.length - 1];
+    $('flags').textContent = [t.mustGoLower ? '⬇️ יורדים – מתחת ל-7 (או 7)' : '', v.firstMove ? 'המהלך הראשון חייב 3♣' : '', t.count === null && myTurn ? 'פותחים סרייה' : ''].filter(Boolean).join(' · ');
+    $('table').innerHTML = last ? last.cards.map(c => cardEl(c, 'small')).join('') + ` <small>(${v.seats.find(s => s.id === last.playerId).name})</small>` : '—';
+    $('hand').innerHTML = v.hand.map(c => cardEl(c, sel.has(c.id) ? 'sel' : '')).join('');
+    $('play').disabled = !myTurn || sel.size === 0;
+    $('pass').disabled = !myTurn || t.count === null;
+    $('again').hidden = v.phase !== 'finished';
+  }
+  $('hand').addEventListener('click', (e) => {
+    const el = e.target.closest('.card'); if (!el) return;
+    sel.has(el.dataset.id) ? sel.delete(el.dataset.id) : sel.add(el.dataset.id); render();
+  });
+  $('play').onclick = () => { socket.emit('game:play', { cardIds: [...sel] }); sel.clear(); };
+  $('pass').onclick = () => socket.emit('game:pass');
+  $('again').onclick = () => socket.emit('game:again');
+  setInterval(() => {
+    if (view && view.turnDeadline && view.phase === 'playing') $('timer').textContent = Math.max(0, Math.ceil((view.turnDeadline - Date.now()) / 1000)) + ' ש׳';
+    else $('timer').textContent = '';
+  }, 500);
+</script>
+</body>
+</html>
