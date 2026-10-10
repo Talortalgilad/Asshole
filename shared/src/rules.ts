@@ -90,7 +90,7 @@ export function checkMove(cards: Card[], trick: TrickState, firstMove: boolean):
 
   // 7. יורדים אחרי 7
   if (trick.mustGoLower) {
-    return rank < SEVEN ? OK : bad('אחרי 7 חייבים לרדת מתחת ל-7');
+    return rank <= SEVEN ? OK : bad('אחרי 7 חייבים לשים מתחת ל-7 או 7 נוסף');
   }
 
   // 8. שווה או גבוה

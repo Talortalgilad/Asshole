@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAutoExchange, applyChoices, applyPass, applyPlay, cards, computeExchange, createDeck, deal,
-  findOpener, getLegalPlays, newTrick, startGame, titlesForOrder, validatePlay,
+  findOpener, getLegalPlays, newTrick, startGame, titlesForOrder, validatePass, validatePlay,
   type Card, type GameState, type TrickState,
 } from '../src';
 
@@ -71,12 +71,12 @@ describe('מנוע חוקים', () => {
 
   it('5. אחרי 7: 8 נדחה, 5 מתקבל, ואז מותר לעלות שוב', () => {
     const s = mk(
-      { B: ['8D', '5D', 'KC'], C: ['9C', 'JC', 'KS'] },
+      { B: ['8D', '7D', '5D', 'KC'], C: ['9C', 'JC', 'KS'] },
       { count: 1, sameRankStreak: 1, mustGoLower: true, plays: [play1(7, 'A', ['7C'])] },
       { turn: 'B' },
     );
     expect(validatePlay(s, 'B', cards('8D')).ok).toBe(false);
-    expect(validatePlay(s, 'B', cards('7D')).ok).toBe(false);
+    expect(validatePlay(s, 'B', cards('7D')).ok).toBe(true); // 7 על 7 מותר
     const r = play(s, 'B', '5D');
     expect(r.state.trick.mustGoLower).toBe(false);
     expect(validatePlay(r.state, 'C', cards('9C')).ok).toBe(true);
@@ -88,7 +88,7 @@ describe('מנוע חוקים', () => {
     expect(validatePlay(s, 'B', cards('2D')).ok).toBe(true);
   });
 
-  it('6. אחרי זוג 7: הבא חייב זוג נמוך מ-7', () => {
+  it('6. אחרי זוג 7: הבא חייב זוג נמוך מ-7 או זוג 7', () => {
     const s = mk(
       { B: ['8D', '8H', '5D', '5H', '6D', 'KC'] },
       { count: 2, sameRankStreak: 2, mustGoLower: true, plays: [play1(7, 'A', ['7C', '7D'])] },
@@ -97,6 +97,8 @@ describe('מנוע חוקים', () => {
     expect(validatePlay(s, 'B', cards('8D', '8H')).ok).toBe(false);
     expect(validatePlay(s, 'B', cards('6D')).ok).toBe(false); // כמות שגויה
     expect(validatePlay(s, 'B', cards('5D', '5H')).ok).toBe(true);
+    s.hands.B = cards('7D', '7H', '5D');
+    expect(validatePlay(s, 'B', cards('7D', '7H')).ok).toBe(true);
   });
 
   it('7. שלשה של 8 ואחריה 8 בודד – מתקבל, רביעייה, סיבוב חדש', () => {
@@ -251,6 +253,81 @@ describe('מנוע חוקים', () => {
     const sizes = ids.map((i) => hands[i].length).sort();
     expect(sizes).toEqual([10, 10, 10, 11, 11]);
     expect(createDeck()).toHaveLength(52);
+  });
+});
+
+describe('7 על 7, דילוג וסוף סרייה', () => {
+  it('T1. A:7, B:7, C מדולג; D יכול 5 / 7 (A מדולג) ולא 8', () => {
+    let s = mk(
+      { A: ['7C', 'KC'], B: ['7D', 'KD'], C: ['4H', 'KH'], D: ['5S', '7S', '8S', 'KS'] },
+      {}, { turn: 'A' },
+    );
+    s = play(s, 'A', '7C').state;
+    const r = play(s, 'B', '7D');
+    expect(r.events).toContainEqual({ type: 'skip', playerId: 'B', skippedId: 'C' });
+    expect(r.state.turn).toBe('D');
+    expect(r.state.trick.mustGoLower).toBe(true);
+    s = r.state;
+    expect(validatePlay(s, 'D', cards('5S')).ok).toBe(true);
+    expect(validatePlay(s, 'D', cards('8S')).ok).toBe(false);
+    const r7 = play(s, 'D', '7S');
+    expect(r7.events).toContainEqual({ type: 'skip', playerId: 'D', skippedId: 'A' });
+    expect(r7.state.turn).toBe('B'); // A מדולג
+    expect(r7.state.trick.mustGoLower).toBe(true); // החובה נשארת
+    expect(play(s, 'D', '5S').state.trick.mustGoLower).toBe(false);
+  });
+
+  it('T1ב. פס תמיד מותר אחרי 7, והשלמת רביעייה של 7 סוגרת את הסרייה', () => {
+    const s = mk(
+      { B: ['7S', 'KD'], C: ['4H'] },
+      { count: 3, sameRankStreak: 3, mustGoLower: true, plays: [play1(7, 'A', ['7C', '7D', '7H'])] },
+      { turn: 'B' },
+    );
+    expect(validatePlay(s, 'B', cards('KD')).ok).toBe(false);
+    const r = play(s, 'B', '7S');
+    expect(r.events.map((e) => e.type)).toContain('four');
+    expect(r.state.turn).toBe('B');
+    expect(r.state.trick.count).toBeNull();
+    const s2 = mk({ B: ['4D', '7S'] }, { count: 1, mustGoLower: true, sameRankStreak: 1, plays: [play1(7, 'A', ['7C'])] }, { turn: 'B' });
+    expect(applyPass(s2, 'B').state.turn).toBe('C');
+  });
+
+  it('T2. A:9, B:9, C מדולג, D:10 – C חוזר להיות פעיל והפס שלו מתאפס', () => {
+    let s = mk(
+      { A: ['9C', '4C'], B: ['9D', '4D'], C: ['4H', 'QH'], D: ['10S', '4S'] },
+      {}, { turn: 'A' },
+    );
+    s = play(s, 'A', '9C').state;
+    s = play(s, 'B', '9D').state;
+    expect(s.trick.passedSinceLastPlay).toEqual(['C']);
+    expect(s.turn).toBe('D');
+    s = play(s, 'D', '10S').state;
+    expect(s.trick.passedSinceLastPlay).toEqual([]);
+    s = applyPass(s, 'A').state;
+    s = applyPass(s, 'B').state;
+    expect(s.turn).toBe('C'); // הסרייה לא נסגרה – C עדיין בה
+    expect(s.trick.count).toBe(1);
+    expect(validatePlay(s, 'C', cards('QH')).ok).toBe(true);
+    const closed = applyPass(s, 'C');
+    expect(closed.events.map((e) => e.type)).toContain('allPassed');
+    expect(closed.state.turn).toBe('D');
+  });
+
+  it('T3. שני שחקנים: A:9, B:9, A מדולג – B פותח סרייה חדשה, בלי לולאה', () => {
+    let s = mk(
+      { A: ['9C', '4C'], B: ['9D', 'KD'], C: [], D: [] },
+      {}, { turn: 'A' },
+    );
+    s.hands.C = []; s.hands.D = []; s.finishedOrder = ['D', 'C'];
+    s = play(s, 'A', '9C').state;
+    expect(s.turn).toBe('B');
+    const r = play(s, 'B', '9D');
+    expect(r.state.turn).toBe('B');
+    expect(r.state.trick.count).toBeNull();
+    expect(r.state.trick.plays).toHaveLength(0);
+    expect(r.events.map((e) => e.type)).toEqual(['skip', 'allPassed']);
+    expect(validatePass(r.state, 'B').ok).toBe(false); // חייב לפתוח
+    expect(validatePlay(r.state, 'B', cards('KD')).ok).toBe(true);
   });
 });
 
