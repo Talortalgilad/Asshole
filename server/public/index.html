@@ -11,6 +11,8 @@
   .seat { padding: 6px 10px; border-radius: 8px; background: #166534; }
   .seat.turn { outline: 3px solid #facc15; }
   .seat.off { opacity: .5; }
+  #waitSeats .seat { display: flex; gap: 8px; align-items: center; margin: 6px 0; min-height: 36px; }
+  .small-btn { font-size: 13px; padding: 4px 10px; }
   .card { background: #fff; color: #111; border-radius: 6px; padding: 8px 6px; min-width: 38px; text-align: center;
           font-weight: 700; cursor: pointer; user-select: none; border: 2px solid transparent; }
   .card.red { color: #b91c1c; }
@@ -23,8 +25,12 @@
 </style>
 </head>
 <body>
-<h1>פריזידנט – דף בדיקה (שלב 2) · <span id="me"></span></h1>
-<div id="wait"></div>
+<h1>פריזידנט – דף בדיקה (שלב 2.5) · <span id="me"></span></h1>
+<div id="lobby" hidden>
+  <h1>חדר המתנה</h1>
+  <div id="waitSeats"></div>
+  <div class="row"><button id="start">התחל</button><span id="waitMsg"></span></div>
+</div>
 <div id="game" hidden>
   <div class="row" id="seats"></div>
   <div id="flags"></div>
@@ -58,14 +64,32 @@
 
   socket.on('connect', () => socket.emit('room:join'));
   socket.on('table:state', (t) => {
-    $('wait').textContent = t.phase === 'waiting' ? `ממתינים לשחקנים: ${t.players.length}/${t.needed} – ${t.players.map(p => p.name).join(', ')}` : '';
+    const waiting = t.phase === 'waiting';
+    $('lobby').hidden = !waiting;
+    if (!waiting) return;
+    $('game').hidden = true;
+    const host = t.hostId === uid, full = t.seats.every(Boolean);
+    $('waitSeats').innerHTML = t.seats.map((s, i) => s
+      ? `<div class="seat">${s.name}${s.uid === t.hostId ? ' 👑' : ''}${s.uid === uid ? ' (אני)' : ''}${host && s.uid !== uid ? ` <button class="small-btn" data-kick="${i}">הוצא</button>` : ''}</div>`
+      : `<div class="seat off">מושב ריק ${host ? `<button class="small-btn" data-bot="${i}">🤖 הוסף מחשב</button>` : ''}</div>`).join('');
+    $('start').hidden = !host;
+    $('start').disabled = !full;
+    $('waitMsg').textContent = host ? (full ? '' : 'השולחן לא מלא') : 'ממתינים שהמארח יתחיל…';
   });
+  $('waitSeats').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.bot) socket.emit('room:addBot', { seat: Number(b.dataset.bot) });
+    if (b.dataset.kick) socket.emit('room:kick', { seat: Number(b.dataset.kick) });
+  });
+  $('start').onclick = () => socket.emit('room:start');
+  socket.on('room:kicked', () => { $('lobby').hidden = true; $('err').textContent = 'הוצאת מהשולחן. רענן כדי להצטרף שוב.'; });
   socket.on('game:state', (v) => { view = v; sel = new Set([...sel].filter(id => v.hand.some(c => c.id === id))); render(); });
   socket.on('game:event', (e) => log(JSON.stringify(e)));
   socket.on('game:over', (o) => log('סיום: ' + o.results.map(r => r.place + '. ' + r.name).join(' | ')));
   socket.on('game:error', (e) => { $('err').textContent = e.message; setTimeout(() => $('err').textContent = '', 3000); });
 
   function render() {
+    $('lobby').hidden = true;
     $('game').hidden = false;
     const v = view, myTurn = v.turn === v.me && v.phase === 'playing';
     $('seats').innerHTML = v.seats.map(s =>

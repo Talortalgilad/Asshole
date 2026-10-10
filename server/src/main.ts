@@ -1,8 +1,21 @@
 import { createGameServer } from './server';
 
+// Railway מזריק PORT. מקומית ברירת המחדל 3001.
+const port = Number(process.env.PORT ?? 3001);
+
 const server = createGameServer({
   players: Number(process.env.PLAYERS ?? 4),
   turnMs: Number(process.env.TURN_MS ?? 30_000),
+  corsOrigin: process.env.CORS_ORIGIN ?? '*',
 });
-const port = await server.listen(Number(process.env.PORT ?? 3001));
-console.log(`http://localhost:${port}  (${process.env.PLAYERS ?? 4} שחקנים)`);
+await server.listen(port);
+console.log(`listening on :${port} (${process.env.PLAYERS ?? 4} players/table)`);
+
+// Railway שולח SIGTERM בדיפלוי – סוגרים בנחת
+for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(sig, async () => {
+    console.log(`${sig} received, shutting down`);
+    await server.close();
+    process.exit(0);
+  });
+}

@@ -12,12 +12,17 @@ export type ServerOptions = {
   players?: number;
   turnMs?: number;
   rng?: () => number;
+  botDelayMs?: [number, number];
+  corsOrigin?: string;
 };
 
 /** שרת עם חדר אחד, בלי התחברות: הקליינט שולח { uid, name } ב-handshake. */
 export function createGameServer(opts: ServerOptions = {}) {
   const http: HttpServer = createServer((req, res) => {
-    if (req.url === '/' || req.url === '/index.html') {
+    if (req.url === '/health') {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()) }));
+    } else if (req.url === '/' || req.url === '/index.html') {
       res.setHeader('content-type', 'text/html; charset=utf-8');
       res.end(readFileSync(join(here, '../public/index.html')));
     } else {
@@ -25,12 +30,13 @@ export function createGameServer(opts: ServerOptions = {}) {
       res.end('not found');
     }
   });
-  const io = new Server(http, { cors: { origin: '*' } });
+  const io = new Server(http, { cors: { origin: opts.corsOrigin ?? '*' } });
 
   const room = new GameRoom({
     players: opts.players ?? 4,
     turnMs: opts.turnMs ?? 30_000,
     rng: opts.rng,
+    botDelayMs: opts.botDelayMs,
     send: (uid, event, payload) => io.to(`u:${uid}`).emit(event, payload),
   });
 
@@ -56,6 +62,11 @@ export function createGameServer(opts: ServerOptions = {}) {
       }
       room.play(uid, p.cardIds as string[]);
     });
+    socket.on('room:addBot', (p?: { seat?: number }) => room.addBot(uid, p?.seat));
+    socket.on('room:kick', (p?: { seat?: number }) => {
+      if (typeof p?.seat === 'number') room.kick(uid, p.seat);
+    });
+    socket.on('room:start', () => room.start(uid));
     socket.on('game:pass', () => room.pass(uid));
     socket.on('game:again', () => room.again(uid));
     socket.on('disconnect', () => room.disconnect(uid, socket.id));
@@ -63,10 +74,11 @@ export function createGameServer(opts: ServerOptions = {}) {
 
   return {
     http, io, room,
-    listen: (port = opts.port ?? 3001) =>
-      new Promise<number>((resolve) =>
-        http.listen(port, () => resolve((http.address() as { port: number }).port)),
-      ),
+    listen: (port = opts.port ?? 3001, host?: string) =>
+      new Promise<number>((resolve) => {
+        const done = () => resolve((http.address() as { port: number }).port);
+        host ? http.listen(port, host, done) : http.listen(port, done);
+      }),
     close: async () => {
       room.close();
       await io.close();
