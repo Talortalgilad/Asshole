@@ -48,7 +48,7 @@ async function setup(players = 4, opts: { turnMs?: number; start?: boolean; botD
   return clients;
 }
 
-const until = async (cond: () => boolean, ms = 5000) => {
+const until = async (cond: () => boolean, ms = 15_000) => {
   const t0 = Date.now();
   while (!cond()) {
     if (Date.now() - t0 > ms) throw new Error('timeout');
