@@ -1,10 +1,40 @@
-import { useGameClient } from '../lib/useGameClient';
+import { useState } from 'react';
+import { suggestUsername } from '@asshole/shared';
+import { type AuthPayload, useGameClient } from '../lib/useGameClient';
 import { GameScreen } from './GameScreen';
+import { ProfileScreen } from './ProfileScreen';
+import { UsernameScreen } from './UsernameScreen';
 import { WaitingRoom } from './WaitingRoom';
 
-export function Room({ uid, name }: { uid: string; name: string }) {
-  const g = useGameClient(uid, name);
+type Props = { getAuth: AuthPayload; authKey: string; onSignOut: () => void };
 
+export function Room({ getAuth, authKey, onSignOut }: Props) {
+  const g = useGameClient(getAuth, authKey);
+  const [showProfile, setShowProfile] = useState(false);
+
+  if (!g.profile) {
+    return <div className="flex h-full items-center justify-center text-lg">{g.connected ? 'טוען…' : 'מתחבר לשרת…'}</div>;
+  }
+  const uid = g.profile.uid;
+  const me = g.profile.profile;
+
+  // משתמש חדש: חייב לבחור שם לפני שנכנסים
+  if (!me) {
+    return (
+      <UsernameScreen
+        title="בחר שם משתמש" submitLabel="המשך" initial={suggestUsername(g.profile.suggested)}
+        serverError={g.profileError} onSubmit={g.actions.setUsername}
+      />
+    );
+  }
+  if (showProfile) {
+    return (
+      <ProfileScreen
+        profile={me} dev={g.profile.dev} error={g.profileError}
+        onRename={g.actions.setUsername} onSignOut={onSignOut} onBack={() => setShowProfile(false)}
+      />
+    );
+  }
   if (g.kicked) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
@@ -12,9 +42,6 @@ export function Room({ uid, name }: { uid: string; name: string }) {
         <button onClick={g.actions.rejoin} className="rounded-xl bg-yellow-400 px-6 py-3 font-extrabold text-black">חזרה לשולחן</button>
       </div>
     );
-  }
-  if (!g.connected && !g.table) {
-    return <div className="flex h-full items-center justify-center text-lg">מתחבר לשרת…</div>;
   }
   return (
     <>
@@ -26,7 +53,7 @@ export function Room({ uid, name }: { uid: string; name: string }) {
         />
       ) : g.table ? (
         <>
-          <WaitingRoom table={g.table} uid={uid} actions={g.actions} />
+          <WaitingRoom table={g.table} uid={uid} me={me} actions={g.actions} onProfile={() => setShowProfile(true)} />
           {g.error && <div className="fixed inset-x-0 bottom-4 text-center font-bold text-yellow-200">{g.error}</div>}
         </>
       ) : null}

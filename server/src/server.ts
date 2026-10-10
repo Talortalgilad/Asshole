@@ -3,6 +3,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
+import { type Profile } from '@asshole/shared';
+import { devVerifier, type Verifier } from './auth';
+import { MemoryUserStore, type UserStore } from './users';
 import { GameRoom } from './room';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +36,9 @@ export type ServerOptions = {
   rng?: () => number;
   botDelayMs?: [number, number];
   corsOrigin?: string;
+  /** ברירת מחדל: מצב פיתוח (בלי אימות). בפרודקשן: createBackendFromEnv() */
+  verifier?: Verifier;
+  userStore?: UserStore;
 };
 
 /** שרת עם חדר אחד, בלי התחברות: הקליינט שולח { uid, name } ב-handshake. */
@@ -64,20 +70,48 @@ export function createGameServer(opts: ServerOptions = {}) {
     send: (uid, event, payload) => io.to(`u:${uid}`).emit(event, payload),
   });
 
-  io.use((socket, next) => {
-    const { uid, name } = socket.handshake.auth ?? {};
-    if (typeof uid !== 'string' || !/^[\w-]{3,64}$/.test(uid)) return next(new Error('bad uid'));
-    socket.data.uid = uid;
-    socket.data.name = String(name || uid).slice(0, 16);
-    next();
+  const verifier = opts.verifier ?? devVerifier();
+  const store: UserStore = opts.userStore ?? new MemoryUserStore();
+
+  io.use(async (socket, next) => {
+    try {
+      const id = await verifier.verify((socket.handshake.auth ?? {}) as Record<string, unknown>);
+      socket.data.identity = id;
+      // במצב פיתוח אין שלב שם משתמש: השם מגיע מהקליינט
+      socket.data.profile = verifier.dev
+        ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null } as unknown as Profile)
+        : await store.get(id.uid);
+      next();
+    } catch {
+      next(new Error('unauthorized'));
+    }
   });
 
   io.on('connection', (socket) => {
-    const uid: string = socket.data.uid;
+    const uid: string = socket.data.identity.uid;
     socket.join(`u:${uid}`);
+    const sendProfile = () =>
+      socket.emit('profile:state', {
+        uid, profile: socket.data.profile as Profile | null,
+        suggested: socket.data.identity.name as string, dev: verifier.dev,
+      });
+    sendProfile();
+
+    socket.on('profile:set', async (p?: { username?: unknown }) => {
+      if (verifier.dev) return;
+      const r = typeof p?.username === 'string'
+        ? await store.setUsername(uid, p.username, socket.data.identity.photoURL)
+        : { ok: false as const, reason: 'invalid' as const, message: 'בקשה לא תקינה' };
+      if (!r.ok) return void socket.emit('profile:error', { code: r.reason, message: r.message });
+      socket.data.profile = r.profile;
+      sendProfile();
+      room.rename(uid, r.profile.username, r.profile.photoURL);
+    });
 
     socket.on('room:join', () => {
-      const err = room.join(uid, socket.data.name, socket.id);
+      const profile = socket.data.profile as Profile | null;
+      if (!profile) return void socket.emit('game:error', { code: 'no_profile', message: 'צריך לבחור שם משתמש' });
+      const err = room.join(uid, profile.username, socket.id, profile.photoURL);
       if (err) socket.emit('game:error', { code: 'join_failed', message: err });
     });
     socket.on('game:play', (p: { cardIds?: unknown }) => {

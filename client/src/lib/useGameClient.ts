@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { Card, GameEvent, GameView } from '@asshole/shared';
+import type { Card, GameEvent, GameView, Profile } from '@asshole/shared';
 import { bannerFor, cardLabel, logLine, nameOf, type Banner } from './game';
 
-export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean } | null;
+export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean; photoURL?: string } | null;
+export type ProfileState = { uid: string; profile: Profile | null; suggested: string; dev: boolean };
+export type AuthPayload = () => Promise<Record<string, unknown>>;
 export type TableState = {
   tableId: string; needed: number; phase: string; hostId: string | null; seats: TableSeat[];
 };
@@ -15,7 +17,10 @@ export type CenterPlay = { playerId: string; cards: Card[]; closing?: 'cut' | 'f
 const BANNER_MS = 1900;
 const CLOSING_MS = 1600;
 
-export function useGameClient(uid: string, name: string) {
+/** getAuth מחזיר את ה-handshake: { token } (Google) או { uid, name } (מצב פיתוח). key משנה = חיבור מחדש. */
+export function useGameClient(getAuth: AuthPayload, key: string) {
+  const getAuthRef = useRef(getAuth);
+  getAuthRef.current = getAuth;
   const socketRef = useRef<Socket | null>(null);
   const viewRef = useRef<GameView | null>(null);
   const bannerId = useRef(0);
@@ -27,16 +32,25 @@ export function useGameClient(uid: string, name: string) {
   const [log, setLog] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [kicked, setKicked] = useState(false);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [closingPlay, setClosingPlay] = useState<CenterPlay>(null);
 
   useEffect(() => {
-    const socket = io({ auth: { uid, name } });
+    // פונקציה: נקראת מחדש בכל חיבור, כך שהטוקן תמיד טרי
+    const socket = io({ auth: (cb) => { getAuthRef.current().then(cb, () => cb({})); } });
     socketRef.current = socket;
     let errTimer: ReturnType<typeof setTimeout>;
     let closeTimer: ReturnType<typeof setTimeout>;
     const addLog = (line: string | null) => line && setLog((l) => [line, ...l].slice(0, 60));
 
-    socket.on('connect', () => { setConnected(true); socket.emit('room:join'); });
+    socket.on('connect', () => setConnected(true));
+    socket.on('profile:state', (p: ProfileState) => {
+      setProfile(p);
+      setProfileError(null);
+      if (p.profile) socket.emit('room:join'); // יש שם משתמש – מצטרפים לשולחן
+    });
+    socket.on('profile:error', (e: { message: string }) => setProfileError(e.message));
     socket.on('disconnect', () => setConnected(false));
     socket.on('connect_error', () => setConnected(false));
     socket.on('table:state', (t: TableState) => {
@@ -78,12 +92,12 @@ export function useGameClient(uid: string, name: string) {
     });
     socket.on('room:kicked', () => setKicked(true));
     return () => { clearTimeout(errTimer); clearTimeout(closeTimer); socket.close(); };
-  }, [uid, name]);
+  }, [key]);
 
   const emit = useCallback((event: string, payload?: unknown) => socketRef.current?.emit(event, payload), []);
 
   return {
-    connected, table, view, results, banners, log, error, kicked, closingPlay,
+    connected, table, view, results, banners, log, error, kicked, closingPlay, profile, profileError,
     actions: {
       play: (cardIds: string[]) => emit('game:play', { cardIds }),
       pass: () => emit('game:pass'),
@@ -91,6 +105,7 @@ export function useGameClient(uid: string, name: string) {
       addBot: (seat: number) => emit('room:addBot', { seat }),
       kick: (seat: number) => emit('room:kick', { seat }),
       again: () => emit('game:again'),
+      setUsername: (username: string) => emit('profile:set', { username }),
       rejoin: () => { setKicked(false); emit('room:join'); },
     },
   };

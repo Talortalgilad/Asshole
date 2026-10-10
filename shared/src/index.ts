@@ -4,3 +4,4 @@ export * from './rules';
 export * from './exchange';
 export * from './view';
 export * from './bot';
+export * from './profile';

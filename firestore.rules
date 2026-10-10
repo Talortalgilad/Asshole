@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // כתיבה רק מהשרת (firebase-admin עוקף את הכללים). הקליינט רק קורא.
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /monthlyStats/{month}/users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /games/{gameId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    // בדיקת ייחודיות שמות נעשית בשרת בלבד
+    match /usernames/{name} {
+      allow read, write: if false;
+    }
+  }
+}

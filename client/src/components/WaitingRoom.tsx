@@ -1,12 +1,17 @@
+import type { Profile } from '@asshole/shared';
 import type { TableState } from '../lib/useGameClient';
+import { Avatar } from './ProfileScreen';
 
 type Actions = { start(): void; addBot(seat: number): void; kick(seat: number): void };
 
-export function WaitingRoom({ table, uid, actions }: { table: TableState; uid: string; actions: Actions }) {
+export function WaitingRoom({ table, uid, me, actions, onProfile }: { table: TableState; uid: string; me: Profile; actions: Actions; onProfile: () => void }) {
   const host = table.hostId === uid;
   const full = table.seats.every(Boolean);
   return (
     <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-4 px-4">
+      <button onClick={onProfile} className="absolute end-3 top-3 flex items-center gap-2 rounded-full bg-black/30 py-1 pe-3 ps-1 text-sm font-bold">
+        <Avatar url={me.photoURL} name={me.username} size={32} />{me.username}
+      </button>
       <h1 className="text-center text-3xl font-extrabold">חדר המתנה</h1>
       <p className="text-center text-green-100/80">{table.seats.filter(Boolean).length} / {table.needed} שחקנים</p>
       <ul className="flex flex-col gap-2">
@@ -14,7 +19,8 @@ export function WaitingRoom({ table, uid, actions }: { table: TableState; uid: s
           <li key={i} className={`flex min-h-14 items-center justify-between gap-2 rounded-xl px-4 py-2 ${s ? 'bg-black/30' : 'border border-dashed border-white/30'}`}>
             {s ? (
               <>
-                <span className="font-bold">
+                <span className="flex items-center gap-2 font-bold">
+                  {!s.isBot && <Avatar url={s.photoURL} name={s.name} size={28} />}
                   {s.name}{s.uid === table.hostId ? ' 👑' : ''}{s.uid === uid ? ' (אני)' : ''}
                 </span>
                 {host && s.uid !== uid && (

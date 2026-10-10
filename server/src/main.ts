@@ -1,9 +1,15 @@
+import { createBackendFromEnv } from './auth';
+import { FirestoreUserStore, MemoryUserStore } from './users';
 import { createGameServer } from './server';
+
+const backend = createBackendFromEnv();
 
 // Railway מזריק PORT. מקומית ברירת המחדל 3001.
 const port = Number(process.env.PORT ?? 3001);
 
 const server = createGameServer({
+  verifier: backend.verifier,
+  userStore: backend.db ? new FirestoreUserStore(backend.db) : new MemoryUserStore(),
   players: Number(process.env.PLAYERS ?? 4),
   turnMs: Number(process.env.TURN_MS ?? 30_000),
   botDelayMs: process.env.BOT_DELAY_MS ? (process.env.BOT_DELAY_MS.split(',').map(Number) as [number, number]) : undefined,
