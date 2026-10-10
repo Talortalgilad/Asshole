@@ -4,13 +4,16 @@
   "version": "0.1.0",
   "workspaces": [
     "shared",
-    "server"
+    "server",
+    "client"
   ],
   "scripts": {
-    "test": "npm run test -w shared && npm run test -w server",
+    "test": "npm run test -w shared && npm run test -w server && npm run test -w client",
     "dev": "npm run dev -w server",
-    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server",
-    "start": "npm run start -w server"
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
+    "start": "npm run start -w server",
+    "build": "npm run build -w client",
+    "dev:client": "npm run dev -w client"
   },
   "engines": {
     "node": ">=20"

@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 50% 30%, #166534 0%, #14532d 55%, #052e16 100%);
+  color: #f0fdf4;
+  font-family: system-ui, -apple-system, "Segoe UI", Heebo, Arial, sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes pop { 0% { transform: scale(.6) translateY(24px); opacity: 0; } 70% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes banner { 0% { transform: translateY(-14px) scale(.9); opacity: 0; } 12% { transform: none; opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(250,204,21,.9); } 100% { box-shadow: 0 0 0 22px rgba(250,204,21,0); } }
+@keyframes fadeout { 0%, 55% { opacity: 1; } 100% { opacity: .0; transform: scale(.92); } }
+@keyframes pulse-turn { 0%,100% { box-shadow: 0 0 0 2px #facc15; } 50% { box-shadow: 0 0 0 5px rgba(250,204,21,.45); } }
+
+.anim-pop { animation: pop .32s ease-out both; }
+.anim-banner { animation: banner 1.9s ease-out both; }
+.anim-shake { animation: shake .45s ease-in-out; }
+.anim-flash { animation: flash .6s ease-out; }
+.anim-fadeout { animation: fadeout 1.6s ease-in both; }
+.turn-glow { animation: pulse-turn 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop, .anim-banner, .anim-shake, .anim-flash, .anim-fadeout, .turn-glow { animation: none; }
+}

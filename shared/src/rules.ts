@@ -174,12 +174,12 @@ export function applyPlay(
 
   // 3+4. חיתוך ב-2 / השלמת רביעייה – הסרייה נסגרת
   if (trick.sameRankStreak === 4) {
-    events.push({ type: 'four', playerId });
+    events.push({ type: 'four', playerId, cards: sortHand(cards) });
     closeTrick(state, leaderAfter(state, playerId));
     return { state, events };
   }
   if (rank === TWO && n === 1) {
-    events.push({ type: 'cut', playerId });
+    events.push({ type: 'cut', playerId, cards: sortHand(cards) });
     closeTrick(state, leaderAfter(state, playerId));
     return { state, events };
   }

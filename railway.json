@@ -7,5 +7,8 @@
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
+  },
+  "build": {
+    "buildCommand": "npm run build"
   }
 }

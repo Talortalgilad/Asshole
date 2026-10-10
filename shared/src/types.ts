@@ -30,9 +30,9 @@ export type GameState = {
 };
 
 export type GameEvent =
-  | { type: 'cut'; playerId: string }
+  | { type: 'cut'; playerId: string; cards: Card[] }
   | { type: 'skip'; playerId: string; skippedId: string }
-  | { type: 'four'; playerId: string }
+  | { type: 'four'; playerId: string; cards: Card[] }
   | { type: 'allPassed'; playerId: string }
   | { type: 'mustLower'; playerId: string }
   | { type: 'playerOut'; playerId: string; place: number };

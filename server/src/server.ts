@@ -1,11 +1,30 @@
 import { createServer, type Server as HttpServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { GameRoom } from './room';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const CLIENT_DIST = join(here, '../../client/dist');
+const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2',
+};
+
+/** מגיש את ה-build של הקליינט (אם קיים) עם fallback ל-index.html */
+function serveClient(url: string, res: import('node:http').ServerResponse): boolean {
+  if (!existsSync(join(CLIENT_DIST, 'index.html'))) return false;
+  const path = decodeURIComponent(url.split('?')[0]);
+  let file = join(CLIENT_DIST, path);
+  if (!file.startsWith(CLIENT_DIST)) return false; // הגנה מ-path traversal
+  if (!existsSync(file) || !statSync(file).isFile()) file = join(CLIENT_DIST, 'index.html');
+  const ext = file.slice(file.lastIndexOf('.'));
+  res.setHeader('content-type', MIME[ext] ?? 'application/octet-stream');
+  if (file.includes('/assets/')) res.setHeader('cache-control', 'public, max-age=31536000, immutable');
+  res.end(readFileSync(file));
+  return true;
+}
 
 export type ServerOptions = {
   port?: number;
@@ -22,8 +41,13 @@ export function createGameServer(opts: ServerOptions = {}) {
     if (req.url === '/health') {
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()) }));
-    } else if (req.url === '/' || req.url === '/index.html') {
+    } else if (req.url === '/debug') {
       res.setHeader('content-type', 'text/html; charset=utf-8');
+      res.end(readFileSync(join(here, '../public/index.html')));
+    } else if (req.method === 'GET' && serveClient(req.url ?? '/', res)) {
+      // הוגש מה-build של הקליינט
+    } else if (req.url === '/' || req.url === '/index.html') {
+      res.setHeader('content-type', 'text/html; charset=utf-8'); // אין build – דף הבדיקה
       res.end(readFileSync(join(here, '../public/index.html')));
     } else {
       res.statusCode = 404;

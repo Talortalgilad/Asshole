@@ -6,6 +6,7 @@ const port = Number(process.env.PORT ?? 3001);
 const server = createGameServer({
   players: Number(process.env.PLAYERS ?? 4),
   turnMs: Number(process.env.TURN_MS ?? 30_000),
+  botDelayMs: process.env.BOT_DELAY_MS ? (process.env.BOT_DELAY_MS.split(',').map(Number) as [number, number]) : undefined,
   corsOrigin: process.env.CORS_ORIGIN ?? '*',
 });
 await server.listen(port);
