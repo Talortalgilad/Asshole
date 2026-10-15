@@ -87,11 +87,12 @@ function useClientState(getAuth: AuthPayload, key: string) {
       setTableId(j.tableId);
       if (pending.current) { pending.current.resolve(j); pending.current = null; } else setResumeTableId(j.tableId);
     });
-    socket.on('table:left', () => {
-      const r = leaveReason.current;
+    socket.on('table:left', (m?: { reason?: string; by?: string }) => {
+      // אם הבקשה באה מחיבור אחר של אותו חשבון, זו לא היציאה שלי
+      const r = m?.by && m.by !== socket.id ? `server:left-elsewhere:${m.reason ?? '?'}` : leaveReason.current;
       leaveReason.current = null;
       // יציאה אוטומטית (לא לחיצה של המשתמש) מוצגת עם קוד סיבה, כדי שאפשר יהיה לאתר אותה
-      if (!r) say('יצאת מהשולחן ממכשיר או מלשונית אחרת עם אותו חשבון (server:left-elsewhere)');
+      if (!r) say('יצאת מהשולחן בלי בקשה (server:left-unknown)');
       else if (!r.startsWith('ui:')) say(`יצאת מהשולחן (${r})`);
       explainedLeave.current = true;
       resetTable();
@@ -185,7 +186,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
       setLeaving(true);
       const t = setTimeout(() => { setLeaving(false); resolve(); }, 3000);
       leaveWaiters.current.push(() => { clearTimeout(t); resolve(); });
-      emit('table:leave');
+      emit('table:leave', { reason });
     }),
     /** האם היציאה האחרונה מהשולחן כבר מוסברת (לחיצה של המשתמש או הודעה)? קריאה מאפסת */
     consumeExplainedLeave: () => { const v = explainedLeave.current; explainedLeave.current = false; return v; },

@@ -25,6 +25,7 @@ function serveClient(url: string, res: import('node:http').ServerResponse): bool
   if (!existsSync(file) || !statSync(file).isFile()) file = join(CLIENT_DIST, 'index.html');
   const ext = file.slice(file.lastIndexOf('.'));
   res.setHeader('content-type', MIME[ext] ?? 'application/octet-stream');
+  if (file.endsWith('/sw.js')) res.setHeader('cache-control', 'no-cache');
   if (file.includes('/assets/')) res.setHeader('cache-control', 'public, max-age=31536000, immutable');
   res.end(readFileSync(file));
   return true;
@@ -272,9 +273,12 @@ export function createGameServer(opts: ServerOptions = {}) {
       socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
     });
 
-    socket.on('table:leave', () => {
-      manager.tableOf(uid)?.leave(uid);
-      io.to(`u:${uid}`).emit('table:left', {});
+    socket.on('table:leave', (p?: { reason?: unknown }) => {
+      const reason = typeof p?.reason === 'string' ? p.reason.slice(0, 40) : 'unknown';
+      const t = manager.tableOf(uid);
+      if (t) console.log(`[table] יציאה: ${uid} מ-${t.tableId} סיבה=${reason} socket=${socket.id} sockets=${online.get(uid)?.sockets ?? 0}`);
+      t?.leave(uid);
+      io.to(`u:${uid}`).emit('table:left', { reason, by: socket.id });
       broadcastLobby();
     });
 

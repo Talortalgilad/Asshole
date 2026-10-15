@@ -14,3 +14,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 window.addEventListener('unhandledrejection', (e) => console.error('[ui] unhandled rejection', e.reason));
 
 createRoot(document.getElementById('root')!).render(<StrictMode><ErrorBoundary><App /></ErrorBoundary></StrictMode>);
+
+// PWA: רישום ה-service worker (נדרש להתקנה למסך הבית). כישלון לא משפיע על המשחק.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}

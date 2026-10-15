@@ -242,6 +242,7 @@ export class GameRoom {
     this.clearGrace(uid);
     this.graceTimers.set(uid, setTimeout(() => {
       this.graceTimers.delete(uid);
+      console.log(`[table] פג זמן חסד: ${uid} מ-${this.tableId}`);
       this.leave(uid);
     }, waiting ? (this.opts.waitGraceMs ?? 45_000) : (this.opts.graceMs ?? 60_000)));
     this.publish();

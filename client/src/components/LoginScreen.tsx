@@ -5,6 +5,7 @@ import { NeonButton } from './NeonButton';
 import { NeonScreen } from './NeonBackground';
 import { NeonCard } from './NeonCard';
 import { Mixed } from './ui';
+import { useInstall } from '../lib/install';
 
 const GoogleG = () => (
   <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
@@ -20,6 +21,8 @@ type Busy = null | 'google' | 'guest';
 export function LoginScreen() {
   const [busy, setBusy] = useState<Busy>(null);
   const [err, setErr] = useState('');
+  const inst = useInstall();
+  const [howTo, setHowTo] = useState(false);
 
   const run = async (kind: Exclude<Busy, null>, fn: () => Promise<void>) => {
     setBusy(kind);
@@ -56,6 +59,21 @@ export function LoginScreen() {
         </div>
 
         <p className="neon-dim text-xs">אורחים משחקים כרגיל, אך לא מופיעים בטבלת האלופים.</p>
+        {!inst.hidden && (
+          <div className="flex flex-col items-center gap-2">
+            <button type="button" className="chip" style={{ cursor: 'pointer', padding: '.5rem 1rem' }}
+              onClick={() => (inst.native ? void inst.install() : setHowTo((v) => !v))}>
+              📲 שמור כאפליקציה במסך הבית
+            </button>
+            {howTo && !inst.native && (
+              <p className="neon-dim max-w-[17rem] text-xs leading-relaxed" role="note">
+                {inst.ios
+                  ? 'ב-Safari: לחץ על כפתור השיתוף (ריבוע עם חץ), ואז "הוסף למסך הבית".'
+                  : 'בכרום: לחץ על התפריט (שלוש נקודות) ואז "הוסף למסך הבית" או "התקן אפליקציה".'}
+              </p>
+            )}
+          </div>
+        )}
         {err && (
           <p className="max-w-xs text-sm font-bold" style={{ color: 'var(--magenta)' }} dir="auto" role="alert"><Mixed>{err}</Mixed></p>
         )}
