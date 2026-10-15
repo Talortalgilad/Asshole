@@ -6,7 +6,8 @@ import { Server } from 'socket.io';
 import { type Profile } from '@asshole/shared';
 import { devVerifier, type Verifier } from './auth';
 import { MemoryUserStore, type UserStore } from './users';
-import { GameRoom, type RoomOptions } from './room';
+import type { RoomOptions } from './room';
+import { MAX_TABLES, RoomManager } from './rooms';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIST = join(here, '../../client/dist');
@@ -43,7 +44,7 @@ export type ServerOptions = {
   userStore?: UserStore;
 };
 
-/** שרת עם חדר אחד, בלי התחברות: הקליינט שולח { uid, name } ב-handshake. */
+/** שרת עם כמה שולחנות במקביל. בלי service account: מצב פיתוח (הקליינט שולח { uid, name }). */
 export function createGameServer(opts: ServerOptions = {}) {
   const http: HttpServer = createServer((req, res) => {
     // חלון ה-popup של Google מדבר עם הדף דרך window.opener. COOP של same-origin חוסם את זה.
@@ -66,14 +67,33 @@ export function createGameServer(opts: ServerOptions = {}) {
   });
   const io = new Server(http, { cors: { origin: opts.corsOrigin ?? '*' } });
 
-  const room = new GameRoom({
-    players: opts.players ?? 4,
+  type Online = { uid: string; name: string; photoURL: string; isGuest: boolean; sockets: number };
+  const online = new Map<string, Online>();
+
+  // ---------- לובי: רשימת שולחנות ומחוברים (מתעדכן בדחייה קצרה כדי לא להציף) ----------
+  let lobbyTimer: NodeJS.Timeout | null = null;
+  const lobbyState = () => ({
+    tables: manager.list(),
+    online: [...online.values()].filter((o) => o.name).map((o) => {
+      const t = manager.tableOf(o.uid);
+      return { uid: o.uid, name: o.name, photoURL: o.photoURL, isGuest: o.isGuest, at: t ? (t.isPrivate ? 'שולחן פרטי' : t.name) : null };
+    }).sort((a, b) => Number(!!a.at) - Number(!!b.at) || a.name.localeCompare(b.name, 'he')),
+  });
+  const broadcastLobby = () => {
+    if (lobbyTimer) return;
+    lobbyTimer = setTimeout(() => {
+      lobbyTimer = null;
+      io.to('lobby').emit('lobby:state', lobbyState());
+    }, 60);
+  };
+
+  const manager: RoomManager = new RoomManager({
     turnMs: opts.turnMs ?? 30_000,
     rng: opts.rng,
     botDelayMs: opts.botDelayMs,
     ...opts.roomOptions,
     send: (uid, event, payload) => io.to(`u:${uid}`).emit(event, payload),
-  });
+  }, broadcastLobby);
 
   const verifier = opts.verifier ?? devVerifier();
   const store: UserStore = opts.userStore ?? new MemoryUserStore();
@@ -112,12 +132,43 @@ export function createGameServer(opts: ServerOptions = {}) {
   io.on('connection', (socket) => {
     const uid: string = socket.data.identity.uid;
     socket.join(`u:${uid}`);
+    const profileOf = () => socket.data.profile as Profile | null;
     const sendProfile = () =>
       socket.emit('profile:state', {
-        uid, profile: socket.data.profile as Profile | null,
+        uid, profile: profileOf(),
         suggested: socket.data.identity.name as string, dev: verifier.dev, isGuest: socket.data.identity.isGuest as boolean,
       });
+
+    // רישום ברשימת המחוברים (מוצג בלובי רק למי שיש לו שם משתמש)
+    const entry = online.get(uid) ?? { uid, name: '', photoURL: '', isGuest: false, sockets: 0 };
+    entry.sockets += 1;
+    online.set(uid, entry);
+    const trackOnline = () => {
+      const p = profileOf();
+      if (p) { entry.name = p.username; entry.photoURL = p.photoURL; entry.isGuest = p.isGuest; }
+    };
+    trackOnline();
+    broadcastLobby();
+
     sendProfile();
+
+    // חזרה/רענון: מי שכבר יושב בשולחן מחובר אליו מחדש (חוסך את ה-grace)
+    const joinedTable = () => manager.tableOf(uid);
+    {
+      const t = joinedTable();
+      const p = profileOf();
+      if (t && p && !t.join(uid, p.username, socket.id, p.photoURL, p.isGuest)) {
+        socket.emit('table:joined', { tableId: t.tableId, inviteCode: t.inviteCode });
+      }
+    }
+
+    const needProfile = (): Profile | null => {
+      const p = profileOf();
+      if (!p) socket.emit('game:error', { code: 'no_profile', message: 'צריך לבחור שם משתמש' });
+      return p;
+    };
+    const joinFailed = (err: string, reason: 'started' | 'full' | 'closed' | 'not_found') =>
+      socket.emit('game:error', { code: 'join_failed', reason, message: err });
 
     socket.on('profile:set', async (p?: { username?: unknown }) => {
       if (verifier.dev) return;
@@ -128,7 +179,9 @@ export function createGameServer(opts: ServerOptions = {}) {
         if (!r.ok) return void socket.emit('profile:error', { code: r.reason, message: r.message });
         socket.data.profile = r.profile;
         sendProfile();
-        room.rename(uid, r.profile.username, r.profile.photoURL, r.profile.isGuest);
+        trackOnline();
+        manager.tableOf(uid)?.rename(uid, r.profile.username, r.profile.photoURL, r.profile.isGuest);
+        broadcastLobby();
       } catch (e) {
         // בלי try/catch, דחייה לא מטופלת הייתה מפילה את כל השרת
         const x = e as { code?: string | number; message?: string };
@@ -137,43 +190,89 @@ export function createGameServer(opts: ServerOptions = {}) {
       }
     });
 
-    socket.on('room:join', () => {
-      const profile = socket.data.profile as Profile | null;
-      if (!profile) return void socket.emit('game:error', { code: 'no_profile', message: 'צריך לבחור שם משתמש' });
-      const err = room.join(uid, profile.username, socket.id, profile.photoURL, profile.isGuest);
-      // reason: ל-UI, כדי להסביר למה אי אפשר להיכנס (הדבר שהיה נבלע ונשאר מסך ריק)
-      if (err) socket.emit('game:error', { code: 'join_failed', reason: room.phase === 'waiting' ? 'full' : 'started', message: err });
+    // ---------- לובי ----------
+    socket.on('lobby:join', () => {
+      socket.join('lobby');
+      socket.emit('lobby:state', lobbyState());
     });
+    socket.on('lobby:leave', () => socket.leave('lobby'));
+
+    socket.on('table:create', (p?: { maxPlayers?: unknown; isPrivate?: unknown; name?: unknown }) => {
+      const prof = needProfile();
+      if (!prof) return;
+      const cur = joinedTable();
+      if (cur) return void socket.emit('game:error', { code: 'already_in_table', tableId: cur.tableId, message: 'אתה כבר יושב בשולחן' });
+      if (manager.size >= MAX_TABLES) return void socket.emit('game:error', { code: 'too_many_tables', message: 'יש יותר מדי שולחנות פתוחים, נסה שוב מאוחר יותר' });
+      const maxPlayers = p?.maxPlayers === 5 ? 5 : 4;
+      const rawName = typeof p?.name === 'string' ? p.name.replace(/\s+/g, ' ').trim().slice(0, 24) : '';
+      const room = manager.create({
+        maxPlayers, isPrivate: p?.isPrivate === true, name: rawName || `השולחן של ${prof.username}`,
+      });
+      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest);
+      if (err) return joinFailed(err, 'closed');
+      socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
+    });
+
+    socket.on('table:join', (p?: { tableId?: unknown; code?: unknown }) => {
+      const prof = needProfile();
+      if (!prof) return;
+      const cur = joinedTable();
+      const byCode = typeof p?.code === 'string' && p.code.trim() ? manager.byInvite(p.code) : undefined;
+      const byId = typeof p?.tableId === 'string' ? manager.get(p.tableId) : undefined;
+      // שולחן פרטי נכנסים אליו רק עם קוד (או אם כבר יושבים בו, למשל רענון)
+      const room = byCode ?? (byId && (!byId.isPrivate || byId === cur) ? byId : undefined);
+      if (!room || room.isClosed) return joinFailed('השולחן לא נמצא (אולי נסגר)', 'not_found');
+      if (cur && cur !== room) {
+        return void socket.emit('game:error', { code: 'already_in_table', tableId: cur.tableId, message: 'אתה כבר יושב בשולחן אחר. צא ממנו קודם.' });
+      }
+      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest);
+      if (err) return joinFailed(err, room.isClosed ? 'closed' : room.phase === 'waiting' ? 'full' : 'started');
+      socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
+    });
+
+    socket.on('table:leave', () => {
+      manager.tableOf(uid)?.leave(uid);
+      io.to(`u:${uid}`).emit('table:left', {});
+      broadcastLobby();
+    });
+
+    // ---------- בתוך שולחן ----------
     socket.on('game:play', (p: { cardIds?: unknown }) => {
       if (!Array.isArray(p?.cardIds) || !p.cardIds.every((x) => typeof x === 'string')) {
         return void socket.emit('game:error', { code: 'bad_payload', message: 'בקשה לא תקינה' });
       }
-      room.play(uid, p.cardIds as string[]);
+      joinedTable()?.play(uid, p.cardIds as string[]);
     });
-    socket.on('room:addBot', (p?: { seat?: number }) => room.addBot(uid, p?.seat));
+    socket.on('game:pass', () => joinedTable()?.pass(uid));
+    socket.on('game:again', () => joinedTable()?.again(uid));
+    socket.on('room:addBot', (p?: { seat?: number }) => joinedTable()?.addBot(uid, p?.seat));
     socket.on('room:kick', (p?: { seat?: number }) => {
-      if (typeof p?.seat === 'number') room.kick(uid, p.seat);
+      if (typeof p?.seat === 'number') joinedTable()?.kick(uid, p.seat);
     });
-    socket.on('room:start', () => room.start(uid));
-    socket.on('room:lobby', () => room.lobby(uid));
-    socket.on('room:leave', () => room.leave(uid));
+    socket.on('room:start', () => joinedTable()?.start(uid));
+    socket.on('room:lobby', () => joinedTable()?.lobby(uid)); // אחרי משחק: חזרה לחדר ההמתנה
     socket.on('exchange:give', (p?: { cardIds?: unknown }) => {
-      if (Array.isArray(p?.cardIds) && p.cardIds.every((x) => typeof x === 'string')) room.giveCards(uid, p.cardIds as string[]);
+      if (Array.isArray(p?.cardIds) && p.cardIds.every((x) => typeof x === 'string')) joinedTable()?.giveCards(uid, p.cardIds as string[]);
     });
-    socket.on('game:pass', () => room.pass(uid));
-    socket.on('game:again', () => room.again(uid));
-    socket.on('disconnect', () => room.disconnect(uid, socket.id));
+
+    socket.on('disconnect', () => {
+      manager.tableOf(uid)?.disconnect(uid, socket.id);
+      entry.sockets -= 1;
+      if (entry.sockets <= 0 && online.get(uid) === entry) online.delete(uid);
+      broadcastLobby();
+    });
   });
 
   return {
-    http, io, room,
+    http, io, manager,
     listen: (port = opts.port ?? 3001, host?: string) =>
       new Promise<number>((resolve) => {
         const done = () => resolve((http.address() as { port: number }).port);
         host ? http.listen(port, host, done) : http.listen(port, done);
       }),
     close: async () => {
-      room.close();
+      if (lobbyTimer) clearTimeout(lobbyTimer);
+      manager.closeAll();
       await io.close();
     },
   };

@@ -314,12 +314,24 @@ describe('יציאה מהשולחן', () => {
 });
 
 describe('ניתוק וזמן חסד', () => {
-  it('ניתוק בחדר המתנה: המושב מתפנה מיד', () => {
-    const t = mk();
+  it('ניתוק בחדר המתנה: זמן חסד קצר (רענון), ואז המושב מתפנה', async () => {
+    const t = mk({ waitGraceMs: 40 });
     t.room.join('a', 'A', 's1');
     t.room.join('b', 'B', 's2');
     t.room.disconnect('b', 's2');
-    expect(t.last('a', 'table:state').seats[1]).toBeNull();
+    expect(t.last('a', 'table:state').seats[1]).not.toBeNull(); // עדיין יושב
+    await until(() => t.last('a', 'table:state').seats[1] === null);
+  });
+
+  it('רענון בחדר המתנה (חיבור חוזר בתוך החסד): שומר על המושב ועל המארחות', async () => {
+    const t = mk({ waitGraceMs: 60 });
+    t.room.join('a', 'A', 's1');
+    t.room.disconnect('a', 's1');
+    t.room.join('a', 'A', 's1-new');
+    await new Promise((r) => setTimeout(r, 120));
+    expect(t.room.hostId).toBe('a');
+    expect(t.closed).toBe(0);
+    expect(t.last('a', 'table:state').seats[0]).not.toBeNull();
   });
 
   it('ניתוק באמצע משחק: אחרי זמן החסד בוט מחליף והמנותק מדורג אחרון', async () => {

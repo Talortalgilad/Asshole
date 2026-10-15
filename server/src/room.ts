@@ -17,6 +17,8 @@ export type RoomOptions = {
   disconnectedMs?: number;
   /** זמן חסד לניתוק: אחריו בוט מחליף את השחקן (ברירת מחדל 60 שניות) */
   graceMs?: number;
+  /** זמן חסד לניתוק בחדר המתנה (רענון דף לא צריך להפיל את השולחן). יציאה יזומה היא מיידית. */
+  waitGraceMs?: number;
   /** השהיית בוט לפני מהלך [מינימום, מקסימום] במילישניות */
   botDelayMs?: [number, number];
   /** זמן לבחירת קלפים בהחלפה (ברירת מחדל 30 שניות) */
@@ -216,18 +218,13 @@ export class GameRoom {
     if (!m || m.isBot) return;
     m.sockets.delete(socketId);
     if (m.sockets.size > 0) return;
-    if (!this.state && !this.ex) {
-      this.removeMember(uid); // בהמתנה – המושב מתפנה
-      if (!this.closed) { this.publish(); this.changed(); }
-      return;
-    }
-    // באמצע משחק/החלפה/אחריו: זמן חסד, ואז בוט מחליף (או שהמושב מתפנה אחרי משחק)
-    if (this.hostId === uid) this.hostId = this.humans().find((h) => h.sockets.size > 0)?.uid ?? uid;
+    // ניתוק (לא יציאה יזומה): זמן חסד. בהמתנה קצר (רענון), באמצע משחק/החלפה 60 שניות ואז בוט מחליף.
+    const waiting = !this.state && !this.ex;
     this.clearGrace(uid);
     this.graceTimers.set(uid, setTimeout(() => {
       this.graceTimers.delete(uid);
       this.leave(uid);
-    }, this.opts.graceMs ?? 60_000));
+    }, waiting ? (this.opts.waitGraceMs ?? 8_000) : (this.opts.graceMs ?? 60_000)));
     this.publish();
     if (this.state?.phase === 'playing' && this.state.turn === uid) this.armTimer();
   }

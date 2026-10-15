@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
+import { mkClient } from './helpers';
 import { MemoryUserStore } from '../src/users';
 import { createBackendFromEnv, devVerifier, parseServiceAccount, tokenVerifier } from '../src/auth';
 import { createGameServer } from '../src/server';
@@ -27,17 +28,7 @@ async function start() {
   return { port, store };
 }
 
-function client(port: number, token: string) {
-  const s = connect(`http://localhost:${port}`, { auth: { token }, forceNew: true, reconnection: false });
-  const c = { s, profiles: [] as any[], errors: [] as any[], tables: [] as any[], profileErrors: [] as any[], connectError: null as string | null };
-  s.on('profile:state', (p) => c.profiles.push(p));
-  s.on('game:error', (e) => c.errors.push(e));
-  s.on('profile:error', (e) => c.profileErrors.push(e));
-  s.on('table:state', (t) => c.tables.push(t));
-  s.on('connect_error', (e) => (c.connectError = e.message));
-  sockets.push(s);
-  return c;
-}
+const client = (port: number, token: string) => mkClient(port, { token }, sockets);
 
 const until = async (cond: () => boolean, ms = 8000) => {
   const t0 = Date.now();
@@ -67,7 +58,7 @@ describe('אימות Google ושם משתמש', () => {
     await until(() => c.profiles.length > 0);
     expect(c.profiles[0].profile).toBeNull();
     expect(c.profiles[0].suggested).toBe('דנה כהן');
-    c.s.emit('room:join');
+    c.s.emit('table:create', {});
     await until(() => c.errors.some((e) => e.code === 'no_profile'));
     expect(c.tables).toHaveLength(0);
   });
@@ -79,7 +70,7 @@ describe('אימות Google ושם משתמש', () => {
     c.s.emit('profile:set', { username: 'דנה' });
     await until(() => c.profiles.some((p) => p.profile?.username === 'דנה'));
     expect((await store.get('g1'))?.photoURL).toBe('https://img/g1.png');
-    c.s.emit('room:join');
+    c.s.emit('table:create', {});
     await until(() => c.tables.length > 0);
     expect(c.tables.at(-1).seats[0]).toMatchObject({ uid: 'g1', name: 'דנה', photoURL: 'https://img/g1.png' });
     // טאב חדש של אותו משתמש: הפרופיל כבר קיים
@@ -112,7 +103,7 @@ describe('אימות Google ושם משתמש', () => {
     await until(() => a.profiles.length > 0 && b.profiles.length > 0);
     a.s.emit('profile:set', { username: 'ישן' });
     await until(() => a.profiles.some((p) => p.profile));
-    a.s.emit('room:join');
+    a.s.emit('table:create', {});
     await until(() => a.tables.length > 0);
     a.s.emit('profile:set', { username: 'חדש' });
     await until(() => a.tables.at(-1)?.seats[0]?.name === 'חדש');
@@ -131,7 +122,7 @@ describe('כניסה כאורח', () => {
     await until(() => g.profiles.some((p) => p.profile));
     expect(g.profiles.at(-1).profile).toMatchObject({ username: 'אורח77', isGuest: true });
     expect((await store.get('guest1'))?.isGuest).toBe(true);
-    g.s.emit('room:join');
+    g.s.emit('table:create', {});
     await until(() => g.tables.length > 0);
     expect(g.tables.at(-1).seats[0]).toMatchObject({ uid: 'guest1', name: 'אורח77', isGuest: true });
   });
@@ -194,7 +185,7 @@ describe('כניסה כאורח', () => {
     const linked = client(port, 'tok:up2:Dana');
     await until(() => linked.profiles.length > 0);
     expect(linked.profiles[0].profile).toBeNull(); // חייב לבחור שם
-    linked.s.emit('room:join');
+    linked.s.emit('table:create', {});
     await until(() => linked.errors.some((e) => e.code === 'no_profile'));
     linked.s.emit('profile:set', { username: 'Fresh' });
     await until(() => linked.profiles.some((p) => p.profile?.username === 'Fresh'));
