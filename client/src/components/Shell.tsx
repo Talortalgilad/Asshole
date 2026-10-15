@@ -129,13 +129,14 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
     return () => clearTimeout(t);
   }, [onTableRoute, seated, inGame, c.leaving, c.actions]);
 
-  // רענון: השרת מחבר אותי מחדש לשולחן שלי, אז חוזרים אליו
+  // רענון: השרת מחבר אותי מחדש לשולחן שלי (בלי שביקשתי), אז חוזרים אליו.
+  // רק במקרה הזה: אחרת הניווט הזה מתנגש עם הניווט של "צור/הצטרף" ומכפיל רשומה בהיסטוריה.
   useEffect(() => {
-    if (c.tableId && !c.leaving && (loc.pathname === '/lobby' || loc.pathname === '/')) {
-      nav(`/table/${c.tableId}`, { replace: true });
+    if (c.resumeTableId && !c.leaving && (loc.pathname === '/lobby' || loc.pathname === '/')) {
+      nav(`/table/${c.resumeTableId}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c.tableId]);
+  }, [c.resumeTableId]);
 
   // הודעות (הוצאת מהשולחן, הוחלפת בבוט, שדרוג אורח)
   const [toast, setToast] = useState('');

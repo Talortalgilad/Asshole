@@ -38,6 +38,8 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [tableId, setTableId] = useState<string | null>(null);
+  /** שולחן שהשרת חיבר אותי אליו בלי שביקשתי (רענון/חיבור מחדש) */
+  const [resumeTableId, setResumeTableId] = useState<string | null>(null);
   const [table, setTable] = useState<TableState | null>(null);
   const [view, setView] = useState<GameView | null>(null);
   const [exchange, setExchange] = useState<ExchangeView | null>(null);
@@ -59,7 +61,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
     const say = (text: string) => setNotice({ id: ++noticeId.current, text });
     const resetTable = () => {
       viewRef.current = null;
-      setTableId(null); setTable(null); setView(null); setExchange(null); setResults(null); setLog([]); setClosingPlay(null);
+      setTableId(null); setResumeTableId(null); setTable(null); setView(null); setExchange(null); setResults(null); setLog([]); setClosingPlay(null);
       setLeaving(false);
       leaveWaiters.current.splice(0).forEach((f) => f());
     };
@@ -73,8 +75,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
 
     socket.on('table:joined', (j: { tableId: string }) => {
       setTableId(j.tableId);
-      pending.current?.resolve(j);
-      pending.current = null;
+      if (pending.current) { pending.current.resolve(j); pending.current = null; } else setResumeTableId(j.tableId);
     });
     socket.on('table:left', () => resetTable());
     socket.on('table:state', (t: TableState) => {
@@ -163,7 +164,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   };
 
   return {
-    connected, connectError, profile, profileError, lobby, tableId, table, view, exchange, results,
+    connected, connectError, profile, profileError, lobby, tableId, resumeTableId, table, view, exchange, results,
     banners, log, error, notice, closingPlay, leaving, actions,
     clearNotice: () => setNotice(null),
   };
