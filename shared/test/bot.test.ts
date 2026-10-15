@@ -111,3 +111,26 @@ describe('אסטרטגיית פתיחה', () => {
     expect(a.type === 'play' && a.cardIds.includes('3C')).toBe(true);
   });
 });
+
+import { chooseBotExchange } from '../src';
+
+describe('החלפת קלפים של בוט (11.4)', () => {
+  it('מחזיר את הבודדים הנמוכים ביותר ולא שובר זוגות', () => {
+    const hand = cards('3C', '3D', '4H', '6S', '9C', '9D', 'KH', 'AS');
+    expect(chooseBotExchange(hand, 2)).toEqual(['4H', '6S']);
+    expect(chooseBotExchange(hand, 3)).toEqual(['4H', '6S', 'KH']);
+  });
+
+  it('אין מספיק בודדים: שובר את הזוג הנמוך ביותר', () => {
+    const hand = cards('3C', '3D', '5H', '9C', '9D');
+    expect(chooseBotExchange(hand, 2)).toEqual(['5H', '3C']);
+  });
+
+  it('תמיד מחזיר בדיוק count קלפים מהיד', () => {
+    const hand = cards('3C', '3D', '3H', '3S', '5H');
+    const r = chooseBotExchange(hand, 2);
+    expect(r).toHaveLength(2);
+    expect(new Set(r).size).toBe(2);
+    expect(r.every((id) => hand.some((c) => c.id === id))).toBe(true);
+  });
+});

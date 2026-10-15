@@ -63,3 +63,21 @@ export function chooseBotAction(view: PlayerView): BotAction {
   // 4. פס
   return { type: 'pass' };
 }
+
+/**
+ * החלפת קלפים (סעיף 11.4): בוט פריזידנט/סגן מחזיר את הקלפים הבודדים הנמוכים ביותר, בלי לשבור זוגות.
+ * אם אין מספיק בודדים, שוברים את הקבוצות הקטנות והנמוכות ביותר.
+ */
+export function chooseBotExchange(hand: Card[], count: number): string[] {
+  const groups = new Map<number, Card[]>();
+  for (const c of hand) groups.set(c.rank, [...(groups.get(c.rank) ?? []), c]);
+  // קודם בודדים, אחר כך זוגות וכו'; בתוך אותה גודל: הנמוך ראשון
+  const ordered = [...groups.values()].sort((a, b) => a.length - b.length || a[0].rank - b[0].rank);
+  const picked: string[] = [];
+  for (const g of ordered) {
+    for (const c of g) {
+      if (picked.length < count) picked.push(c.id);
+    }
+  }
+  return picked;
+}

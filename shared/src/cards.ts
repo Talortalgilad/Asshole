@@ -75,3 +75,11 @@ export function titlesForOrder(order: string[]): Record<string, Title> {
   order.forEach((uid, i) => (out[uid] = list[i]));
   return out;
 }
+
+export const TITLE_LABEL: Record<Title, string> = {
+  president: 'פריזידנט',
+  vicePresident: 'סגן פריזידנט',
+  middle: 'מידל',
+  viceAsshole: 'סגן אסהול',
+  asshole: 'אסהול',
+};

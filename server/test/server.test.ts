@@ -210,6 +210,8 @@ describe('חדר המתנה, מארח ובוטים', () => {
   it('שחקן אחד + 3 בוטים: המשחק מתחיל ומסתיים, והבוטים לא חושפים קלפים', async () => {
     const { clients } = await lobbyWith(1, 4, { turnMs: 5 }); // האדם משחק אוטומטית
     const host = clients[0];
+    (server.room as unknown as { opts: { exchangeMs: number; exchangeReviewMs: number } }).opts.exchangeMs = 30;
+    (server.room as unknown as { opts: { exchangeReviewMs: number } }).opts.exchangeReviewMs = 0;
     for (let i = 0; i < 3; i++) host.s.emit('room:addBot', {});
     await until(() => lastTable(host).seats.every(Boolean));
     host.s.emit('room:start');

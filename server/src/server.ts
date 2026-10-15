@@ -6,7 +6,7 @@ import { Server } from 'socket.io';
 import { type Profile } from '@asshole/shared';
 import { devVerifier, type Verifier } from './auth';
 import { MemoryUserStore, type UserStore } from './users';
-import { GameRoom } from './room';
+import { GameRoom, type RoomOptions } from './room';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIST = join(here, '../../client/dist');
@@ -36,6 +36,8 @@ export type ServerOptions = {
   rng?: () => number;
   botDelayMs?: [number, number];
   corsOrigin?: string;
+  /** זמנים (חסד, החלפה...) ל-GameRoom: בעיקר לבדיקות */
+  roomOptions?: Partial<RoomOptions>;
   /** ברירת מחדל: מצב פיתוח (בלי אימות). בפרודקשן: createBackendFromEnv() */
   verifier?: Verifier;
   userStore?: UserStore;
@@ -69,6 +71,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     turnMs: opts.turnMs ?? 30_000,
     rng: opts.rng,
     botDelayMs: opts.botDelayMs,
+    ...opts.roomOptions,
     send: (uid, event, payload) => io.to(`u:${uid}`).emit(event, payload),
   });
 
@@ -153,6 +156,10 @@ export function createGameServer(opts: ServerOptions = {}) {
     });
     socket.on('room:start', () => room.start(uid));
     socket.on('room:lobby', () => room.lobby(uid));
+    socket.on('room:leave', () => room.leave(uid));
+    socket.on('exchange:give', (p?: { cardIds?: unknown }) => {
+      if (Array.isArray(p?.cardIds) && p.cardIds.every((x) => typeof x === 'string')) room.giveCards(uid, p.cardIds as string[]);
+    });
     socket.on('game:pass', () => room.pass(uid));
     socket.on('game:again', () => room.again(uid));
     socket.on('disconnect', () => room.disconnect(uid, socket.id));
