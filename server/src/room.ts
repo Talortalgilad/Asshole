@@ -19,7 +19,7 @@ export type RoomOptions = {
   send: Send;
 };
 
-type Member = { uid: string; name: string; isBot: boolean; sockets: Set<string>; photoURL?: string };
+type Member = { uid: string; name: string; isBot: boolean; sockets: Set<string>; photoURL?: string; isGuest?: boolean };
 
 const BOT_NAMES = ['רובי 🤖', 'ביפ 🤖', "צ'יפ 🤖", 'בוטי 🤖', 'טורבו 🤖'];
 
@@ -44,18 +44,19 @@ export class GameRoom {
   // ---------- חדר המתנה ----------
 
   /** @returns הודעת שגיאה, או null אם הצליח */
-  join(uid: string, name: string, socketId: string, photoURL = ''): string | null {
+  join(uid: string, name: string, socketId: string, photoURL = '', isGuest = false): string | null {
     let m = this.members.get(uid);
     if (!m) {
       if (this.state) return 'המשחק כבר התחיל';
       const seat = this.seats.indexOf(null);
       if (seat < 0) return 'השולחן מלא';
-      m = { uid, name, isBot: false, sockets: new Set(), photoURL };
+      m = { uid, name, isBot: false, sockets: new Set(), photoURL, isGuest };
       this.members.set(uid, m);
       this.seats[seat] = uid;
     }
     m.name = name || m.name;
     m.photoURL = photoURL || m.photoURL;
+    m.isGuest = isGuest;
     m.sockets.add(socketId);
     this.clearResetTimer();
     if (!this.hostId || !this.members.has(this.hostId)) this.hostId = uid;
@@ -64,11 +65,12 @@ export class GameRoom {
   }
 
   /** שינוי שם/תמונה של שחקן שכבר יושב */
-  rename(uid: string, name: string, photoURL = '') {
+  rename(uid: string, name: string, photoURL = '', isGuest = false) {
     const m = this.members.get(uid);
     if (!m) return;
     m.name = name;
     m.photoURL = photoURL || m.photoURL;
+    m.isGuest = isGuest;
     this.publish();
   }
 
@@ -207,7 +209,7 @@ export class GameRoom {
 
   private seatInfo(): Record<string, SeatInfo> {
     return Object.fromEntries(
-      [...this.members].map(([uid, m]) => [uid, { name: m.name, connected: m.isBot || m.sockets.size > 0, isBot: m.isBot }]),
+      [...this.members].map(([uid, m]) => [uid, { name: m.name, connected: m.isBot || m.sockets.size > 0, isBot: m.isBot, isGuest: !!m.isGuest }]),
     );
   }
 
@@ -312,7 +314,7 @@ export class GameRoom {
       hostId: this.hostId,
       seats: this.seats.map((uid) => {
         const m = uid ? this.members.get(uid) : null;
-        return m ? { uid: m.uid, name: m.name, isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '' } : null;
+        return m ? { uid: m.uid, name: m.name, isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '', isGuest: !!m.isGuest } : null;
       }),
     });
     if (!this.state) return;

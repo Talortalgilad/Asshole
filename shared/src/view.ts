@@ -1,6 +1,6 @@
 import type { Card, GameState, Play } from './types';
 
-export type SeatInfo = { name: string; connected: boolean; isBot?: boolean };
+export type SeatInfo = { name: string; connected: boolean; isBot?: boolean; isGuest?: boolean };
 
 export type SeatView = {
   id: string;
@@ -10,6 +10,7 @@ export type SeatView = {
   place: number | null; // מקום סיום (1..n) אם כבר יצא
   isMe: boolean;
   isBot: boolean;
+  isGuest: boolean;
 };
 
 /** מה שהקליינט מקבל: היד של השחקן עצמו בלבד, לאחרים רק מספר קלפים */
@@ -57,6 +58,7 @@ export function viewFor(
         place: idx >= 0 ? idx + 1 : null,
         isMe: id === uid,
         isBot: seatInfo[id]?.isBot ?? false,
+        isGuest: seatInfo[id]?.isGuest ?? false,
       };
     }),
     turn: state.turn,

@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import {
-  GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User,
+  GoogleAuthProvider, getAuth, linkWithPopup, onAuthStateChanged, signInAnonymously, signInWithCredential,
+  signInWithPopup, signInWithRedirect, signOut, type User,
 } from 'firebase/auth';
 
 // ערכי Web config של Firebase ציבוריים בכוונה (לא סוד). ההגנה היא ב-Authorized domains וב-Firestore Rules.
@@ -32,5 +33,33 @@ export async function loginWithGoogle() {
     } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
       throw e;
     }
+  }
+}
+
+/** כניסה כאורח (Firebase Anonymous Auth). ה-uid נשמר בדפדפן עד שמתנתקים או מנקים אחסון. */
+export async function loginAsGuest() {
+  await signInAnonymously(auth());
+}
+
+/**
+ * אורח → חשבון Google עם אותו uid (כל הסטטיסטיקות נשמרות).
+ * 'switched': חשבון ה-Google הזה כבר קיים, ולכן מתחברים אליו. ההתקדמות של האורח לא מתמזגת.
+ */
+export async function linkGuestWithGoogle(): Promise<'linked' | 'switched'> {
+  const user = auth().currentUser;
+  if (!user) throw Object.assign(new Error('no user'), { code: 'no-user' });
+  try {
+    await linkWithPopup(user, new GoogleAuthProvider());
+    await user.getIdToken(true); // הטוקן מתעדכן ל-provider=google.com
+    return 'linked';
+  } catch (e) {
+    if ((e as { code?: string }).code === 'auth/credential-already-in-use') {
+      const cred = GoogleAuthProvider.credentialFromError(e as never);
+      if (cred) {
+        await signInWithCredential(auth(), cred);
+        return 'switched';
+      }
+    }
+    throw e;
   }
 }

@@ -3,8 +3,8 @@ import { io, type Socket } from 'socket.io-client';
 import type { Card, GameEvent, GameView, Profile } from '@asshole/shared';
 import { bannerFor, cardLabel, logLine, nameOf, type Banner } from './game';
 
-export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean; photoURL?: string } | null;
-export type ProfileState = { uid: string; profile: Profile | null; suggested: string; dev: boolean };
+export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean; photoURL?: string; isGuest?: boolean } | null;
+export type ProfileState = { uid: string; profile: Profile | null; suggested: string; dev: boolean; isGuest: boolean };
 export type AuthPayload = () => Promise<Record<string, unknown>>;
 export type TableState = {
   tableId: string; needed: number; phase: string; hostId: string | null; seats: TableSeat[];

@@ -1,6 +1,6 @@
 import type { Profile } from '@asshole/shared';
 import type { TableState } from '../lib/useGameClient';
-import { Avatar } from './ProfileScreen';
+import { Avatar, GuestTag } from './ProfileScreen';
 
 type Actions = { start(): void; addBot(seat: number): void; kick(seat: number): void };
 
@@ -21,7 +21,7 @@ export function WaitingRoom({ table, uid, me, actions, onProfile }: { table: Tab
               <>
                 <span className="flex items-center gap-2 font-bold">
                   {!s.isBot && <Avatar url={s.photoURL} name={s.name} size={28} />}
-                  {s.name}{s.uid === table.hostId ? ' 👑' : ''}{s.uid === uid ? ' (אני)' : ''}
+                  {s.name}{s.isGuest && <GuestTag />}{s.uid === table.hostId ? ' 👑' : ''}{s.uid === uid ? ' (אני)' : ''}
                 </span>
                 {host && s.uid !== uid && (
                   <button onClick={() => actions.kick(i)} className="rounded-lg bg-red-700/80 px-3 py-1.5 text-sm font-bold">הוצא</button>

@@ -81,8 +81,15 @@ export function createGameServer(opts: ServerOptions = {}) {
       socket.data.identity = id;
       // במצב פיתוח אין שלב שם משתמש: השם מגיע מהקליינט
       socket.data.profile = verifier.dev
-        ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null } as unknown as Profile)
+        ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null, isGuest: false } as unknown as Profile)
         : await store.get(id.uid);
+      // אורח ששדרג ל-Google (linkWithPopup): אותו uid. תופסים את הכינוי שלו כשם משתמש קבוע;
+      // אם הוא כבר תפוס – מבקשים לבחור שם (הסטטיסטיקות נשמרות)
+      const profile = socket.data.profile as Profile | null;
+      if (!verifier.dev && !id.isGuest && profile?.isGuest) {
+        const r = await store.setUsername(id.uid, profile.username, id.photoURL, false);
+        socket.data.profile = r.ok ? r.profile : null;
+      }
       next();
     } catch (e) {
       const x = e as { code?: string; message?: string };
@@ -97,25 +104,25 @@ export function createGameServer(opts: ServerOptions = {}) {
     const sendProfile = () =>
       socket.emit('profile:state', {
         uid, profile: socket.data.profile as Profile | null,
-        suggested: socket.data.identity.name as string, dev: verifier.dev,
+        suggested: socket.data.identity.name as string, dev: verifier.dev, isGuest: socket.data.identity.isGuest as boolean,
       });
     sendProfile();
 
     socket.on('profile:set', async (p?: { username?: unknown }) => {
       if (verifier.dev) return;
       const r = typeof p?.username === 'string'
-        ? await store.setUsername(uid, p.username, socket.data.identity.photoURL)
+        ? await store.setUsername(uid, p.username, socket.data.identity.photoURL, socket.data.identity.isGuest)
         : { ok: false as const, reason: 'invalid' as const, message: 'בקשה לא תקינה' };
       if (!r.ok) return void socket.emit('profile:error', { code: r.reason, message: r.message });
       socket.data.profile = r.profile;
       sendProfile();
-      room.rename(uid, r.profile.username, r.profile.photoURL);
+      room.rename(uid, r.profile.username, r.profile.photoURL, r.profile.isGuest);
     });
 
     socket.on('room:join', () => {
       const profile = socket.data.profile as Profile | null;
       if (!profile) return void socket.emit('game:error', { code: 'no_profile', message: 'צריך לבחור שם משתמש' });
-      const err = room.join(uid, profile.username, socket.id, profile.photoURL);
+      const err = room.join(uid, profile.username, socket.id, profile.photoURL, profile.isGuest);
       if (err) socket.emit('game:error', { code: 'join_failed', message: err });
     });
     socket.on('game:play', (p: { cardIds?: unknown }) => {

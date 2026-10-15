@@ -7,8 +7,11 @@ export type SetUsernameResult =
 
 export interface UserStore {
   get(uid: string): Promise<Profile | null>;
-  /** יוצר משתמש או משנה את שמו. ייחודיות (בלי הבדל אותיות) נאכפת אטומית. */
-  setUsername(uid: string, username: string, photoURL: string): Promise<SetUsernameResult>;
+  /**
+   * יוצר משתמש או משנה את שמו. משתמש Google: ייחודיות (בלי הבדל אותיות) נאכפת אטומית.
+   * אורח (isGuest): הכינוי לא נכנס ל-usernames ולכן לא תופס שם ואינו ייחודי.
+   */
+  setUsername(uid: string, username: string, photoURL: string, isGuest?: boolean): Promise<SetUsernameResult>;
 }
 
 const invalid = (message: string): SetUsernameResult => ({ ok: false, reason: 'invalid', message });
@@ -16,22 +19,28 @@ const TAKEN: SetUsernameResult = { ok: false, reason: 'taken', message: 'השם 
 
 export class MemoryUserStore implements UserStore {
   private users = new Map<string, Profile>();
-  private names = new Map<string, string>(); // usernameLower -> uid
+  private names = new Map<string, string>(); // usernameLower -> uid (רק משתמשי Google)
 
   async get(uid: string) {
     return this.users.get(uid) ?? null;
   }
 
-  async setUsername(uid: string, username: string, photoURL: string): Promise<SetUsernameResult> {
+  async setUsername(uid: string, username: string, photoURL: string, isGuest = false): Promise<SetUsernameResult> {
     const v = validateUsername(username);
     if (!v.ok) return invalid(v.reason);
+    const prev = this.users.get(uid);
+    const stats = prev?.stats ?? { ...EMPTY_STATS };
+    if (isGuest) {
+      const profile: Profile = { uid, username: v.value, photoURL, stats, isGuest: true };
+      this.users.set(uid, profile);
+      return { ok: true, profile };
+    }
     const lower = v.value.toLowerCase();
     const owner = this.names.get(lower);
     if (owner && owner !== uid) return TAKEN;
-    const prev = this.users.get(uid);
-    if (prev) this.names.delete(prev.username.toLowerCase());
+    if (prev && !prev.isGuest) this.names.delete(prev.username.toLowerCase());
     this.names.set(lower, uid);
-    const profile: Profile = { uid, username: v.value, photoURL, stats: prev?.stats ?? { ...EMPTY_STATS } };
+    const profile: Profile = { uid, username: v.value, photoURL, stats, isGuest: false };
     this.users.set(uid, profile);
     return { ok: true, profile };
   }
@@ -45,10 +54,13 @@ export class FirestoreUserStore implements UserStore {
     const snap = await this.db.doc(`users/${uid}`).get();
     if (!snap.exists) return null;
     const d = snap.data()!;
-    return { uid, username: d.username, photoURL: d.photoURL ?? '', stats: { ...EMPTY_STATS, ...d.stats } };
+    return {
+      uid, username: d.username, photoURL: d.photoURL ?? '', isGuest: d.isGuest === true,
+      stats: { ...EMPTY_STATS, ...d.stats },
+    };
   }
 
-  async setUsername(uid: string, username: string, photoURL: string): Promise<SetUsernameResult> {
+  async setUsername(uid: string, username: string, photoURL: string, isGuest = false): Promise<SetUsernameResult> {
     const v = validateUsername(username);
     if (!v.ok) return invalid(v.reason);
     const lower = v.value.toLowerCase();
@@ -56,16 +68,27 @@ export class FirestoreUserStore implements UserStore {
     return db.runTransaction(async (tx): Promise<SetUsernameResult> => {
       const nameRef = db.doc(`usernames/${lower}`);
       const userRef = db.doc(`users/${uid}`);
-      const [nameSnap, userSnap] = await Promise.all([tx.get(nameRef), tx.get(userRef)]);
-      if (nameSnap.exists && nameSnap.data()!.uid !== uid) return TAKEN;
-      const oldLower: string | undefined = userSnap.exists ? userSnap.data()!.usernameLower : undefined;
+      const [nameSnap, userSnap] = await Promise.all([isGuest ? null : tx.get(nameRef), tx.get(userRef)]);
+      const prev = userSnap.exists ? userSnap.data()! : null;
+      const stats = { ...EMPTY_STATS, ...(prev?.stats ?? {}) };
+
+      if (isGuest) {
+        // אורח: לא נוגעים ב-usernames
+        const fields = { username: v.value, photoURL, isGuest: true };
+        if (prev) tx.update(userRef, fields);
+        else tx.set(userRef, { ...fields, createdAt: FieldValue.serverTimestamp(), stats: { ...EMPTY_STATS } });
+        return { ok: true, profile: { uid, username: v.value, photoURL, stats, isGuest: true } };
+      }
+
+      if (nameSnap!.exists && nameSnap!.data()!.uid !== uid) return TAKEN;
+      const oldLower: string | undefined = prev?.usernameLower;
       if (oldLower && oldLower !== lower) tx.delete(db.doc(`usernames/${oldLower}`));
       tx.set(nameRef, { uid });
-      const fields = { username: v.value, usernameLower: lower, photoURL };
-      if (userSnap.exists) tx.update(userRef, fields);
+      // isGuest=false גם כששודרגו מאורח: הסטטיסטיקות נשמרות על אותו uid
+      const fields = { username: v.value, usernameLower: lower, photoURL, isGuest: false };
+      if (prev) tx.update(userRef, fields);
       else tx.set(userRef, { ...fields, createdAt: FieldValue.serverTimestamp(), stats: { ...EMPTY_STATS } });
-      const stats = { ...EMPTY_STATS, ...(userSnap.exists ? userSnap.data()!.stats : {}) };
-      return { ok: true, profile: { uid, username: v.value, photoURL, stats } };
+      return { ok: true, profile: { uid, username: v.value, photoURL, stats, isGuest: false } };
     });
   }
 }

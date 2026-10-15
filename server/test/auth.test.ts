@@ -13,9 +13,11 @@ afterEach(async () => {
 
 // אימות מדומה: "tok:<uid>:<שם Google>" תקין, כל השאר נדחה
 const fakeVerify = async (t: string) => {
+  const anon = /^anon:([\w-]+)$/.exec(t);
+  if (anon) return { uid: anon[1], firebase: { sign_in_provider: 'anonymous' } };
   const m = /^tok:([\w-]+):(.*)$/.exec(t);
   if (!m) throw new Error('invalid token');
-  return { uid: m[1], name: m[2], picture: `https://img/${m[1]}.png` };
+  return { uid: m[1], name: m[2], picture: `https://img/${m[1]}.png`, firebase: { sign_in_provider: 'google.com' } };
 };
 
 async function start() {
@@ -116,6 +118,88 @@ describe('אימות Google ושם משתמש', () => {
     await until(() => a.tables.at(-1)?.seats[0]?.name === 'חדש');
     b.s.emit('profile:set', { username: 'ישן' }); // השם הישן התפנה
     await until(() => b.profiles.some((p) => p.profile?.username === 'ישן'));
+  });
+});
+
+describe('כניסה כאורח', () => {
+  it('אורח בוחר כינוי, מסומן כאורח, ונכנס לשולחן', async () => {
+    const { port, store } = await start();
+    const g = client(port, 'anon:guest1');
+    await until(() => g.profiles.length > 0);
+    expect(g.profiles[0]).toMatchObject({ profile: null, isGuest: true });
+    g.s.emit('profile:set', { username: 'אורח77' });
+    await until(() => g.profiles.some((p) => p.profile));
+    expect(g.profiles.at(-1).profile).toMatchObject({ username: 'אורח77', isGuest: true });
+    expect((await store.get('guest1'))?.isGuest).toBe(true);
+    g.s.emit('room:join');
+    await until(() => g.tables.length > 0);
+    expect(g.tables.at(-1).seats[0]).toMatchObject({ uid: 'guest1', name: 'אורח77', isGuest: true });
+  });
+
+  it('כינוי של אורח לא תופס שם: משתמש Google יכול לקחת אותו, ואורחים יכולים לחלוק שם', async () => {
+    const { port } = await start();
+    const g1 = client(port, 'anon:g1');
+    const g2 = client(port, 'anon:g2');
+    const u = client(port, 'tok:u1:User');
+    await until(() => [g1, g2, u].every((c) => c.profiles.length > 0));
+    g1.s.emit('profile:set', { username: 'Neo' });
+    g2.s.emit('profile:set', { username: 'neo' });
+    await until(() => g1.profiles.some((p) => p.profile) && g2.profiles.some((p) => p.profile));
+    u.s.emit('profile:set', { username: 'NEO' });
+    await until(() => u.profiles.some((p) => p.profile?.username === 'NEO'));
+    expect(u.profileErrors).toHaveLength(0);
+    expect(u.profiles.at(-1).profile.isGuest).toBe(false);
+    // ושם של משתמש Google כן תפוס לאורח? לא רלוונטי – אורח לא נבדק מול usernames
+    g1.s.emit('profile:set', { username: 'NEO' });
+    await until(() => g1.profiles.at(-1)?.profile?.username === 'NEO');
+    expect(g1.profileErrors).toHaveLength(0);
+  });
+
+  it('שדרוג ל-Google (אותו uid): הכינוי נתפס כשם קבוע, הסטטיסטיקות נשמרות', async () => {
+    const { port, store } = await start();
+    const g = client(port, 'anon:up1');
+    await until(() => g.profiles.length > 0);
+    g.s.emit('profile:set', { username: 'שחקן' });
+    await until(() => g.profiles.some((p) => p.profile));
+    // מדמים סטטיסטיקות שנצברו כאורח
+    const prof = (await store.get('up1'))!;
+    prof.stats.games = 7;
+    prof.stats.points = 12;
+    g.s.close();
+    const linked = client(port, 'tok:up1:Dana'); // אותו uid, עכשיו עם ספק google.com
+    await until(() => linked.profiles.length > 0);
+    expect(linked.profiles[0].profile).toMatchObject({ uid: 'up1', username: 'שחקן', isGuest: false });
+    expect(linked.profiles[0].profile.stats).toMatchObject({ games: 7, points: 12 });
+    expect((await store.get('up1'))?.isGuest).toBe(false);
+    // עכשיו השם תפוס באמת
+    const other = client(port, 'tok:o1:Other');
+    await until(() => other.profiles.length > 0);
+    other.s.emit('profile:set', { username: 'שחקן' });
+    await until(() => other.profileErrors.length > 0);
+    expect(other.profileErrors[0].code).toBe('taken');
+  });
+
+  it('שדרוג כשהכינוי כבר תפוס: חייבים לבחור שם חדש, והסטטיסטיקות נשמרות', async () => {
+    const { port, store } = await start();
+    const owner = client(port, 'tok:own:Owner');
+    await until(() => owner.profiles.length > 0);
+    owner.s.emit('profile:set', { username: 'Taken' });
+    await until(() => owner.profiles.some((p) => p.profile));
+    const g = client(port, 'anon:up2');
+    await until(() => g.profiles.length > 0);
+    g.s.emit('profile:set', { username: 'taken' }); // מותר לאורח
+    await until(() => g.profiles.some((p) => p.profile));
+    (await store.get('up2'))!.stats.games = 3;
+    g.s.close();
+    const linked = client(port, 'tok:up2:Dana');
+    await until(() => linked.profiles.length > 0);
+    expect(linked.profiles[0].profile).toBeNull(); // חייב לבחור שם
+    linked.s.emit('room:join');
+    await until(() => linked.errors.some((e) => e.code === 'no_profile'));
+    linked.s.emit('profile:set', { username: 'Fresh' });
+    await until(() => linked.profiles.some((p) => p.profile?.username === 'Fresh'));
+    expect(linked.profiles.at(-1).profile).toMatchObject({ isGuest: false });
+    expect(linked.profiles.at(-1).profile.stats.games).toBe(3);
   });
 });
 

@@ -1,6 +1,7 @@
 import type { SeatView } from '@asshole/shared';
 import { CardBack } from './CardView';
 import { TurnTimer } from './TurnTimer';
+import { GuestTag } from './ProfileScreen';
 
 type Props = { seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null; flash?: boolean };
 
@@ -12,7 +13,7 @@ export function Seat({ seat, isTurn, passed, deadline, flash }: Props) {
         isTurn ? 'turn-glow bg-black/35' : ''
       } ${seat.connected ? '' : 'opacity-50'} ${out ? 'opacity-70' : ''} ${flash ? 'anim-flash' : ''}`}
     >
-      <div className="max-w-full truncate text-sm font-bold sm:text-base">{seat.name}</div>
+      <div className="flex max-w-full items-center justify-center gap-1 text-sm font-bold sm:text-base"><span className="truncate">{seat.name}</span>{seat.isGuest && <GuestTag />}</div>
       {out ? (
         <div className="text-sm font-bold text-yellow-300">מקום {seat.place}</div>
       ) : (

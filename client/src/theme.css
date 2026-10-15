@@ -1,0 +1,237 @@
+/*
+ * ערכת הנושא "ניאון סייברפאנק". כל הצבעים והעוצמות מוגדרים כאן, במקום אחד.
+ * לכוונון חי: /?preview=cards (סליידרים וצבעים), ואז מעתיקים את הערכים לכאן.
+ */
+:root {
+  /* רקעים */
+  --bg-0: #07070f;
+  --bg-1: #0d0b1f;
+  --violet: #2a1650;      /* שכבות / כרטיסים */
+  --violet-deep: #170d33;
+  /* ניאון */
+  --cyan: #00f0ff;        /* ראשי */
+  --magenta: #ff2bd6;     /* משני */
+  /* טקסט */
+  --text: #e9fbff;
+  --text-dim: #9fb0d4;
+  /* עוצמות (0 = כבוי, 1 = ברירת מחדל, עד ~1.6) */
+  --glow: 1;
+  --grid-opacity: 0.6;
+  /* פונטים: Orbitron לאנגלית ולמספרים, Heebo לעברית (ל-Orbitron אין עברית, והדפדפן עובר ל-Heebo אוטומטית) */
+  --font-neon: 'Orbitron', 'Heebo', system-ui, sans-serif;
+  --font-he: 'Heebo', system-ui, sans-serif;
+}
+
+/* בטלפון פחות blur וצללים כבדים */
+@media (max-width: 640px) {
+  :root { --glow: 0.65; }
+}
+
+/* ---------- בסיס ---------- */
+.neon-root {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  color: var(--text);
+  font-family: var(--font-neon);
+  font-weight: 500;
+  background: linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- רקע: גריד סינת'ווייב בתחתית עם נצנוץ איטי ---------- */
+.neon-bg { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.neon-bg::before { /* זוהר אופק */
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 38% at 50% 100%, color-mix(in srgb, var(--magenta) calc(30% * var(--glow)), transparent), transparent 70%),
+    radial-gradient(ellipse 50% 30% at 50% 78%, color-mix(in srgb, var(--violet) 70%, transparent), transparent 70%);
+}
+.neon-bg::after { /* גריד פרספקטיבה */
+  content: '';
+  position: absolute; left: -60%; right: -60%; bottom: -4%; height: 78%;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--cyan) 85%, transparent) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, color-mix(in srgb, var(--cyan) 85%, transparent) 1.5px, transparent 1.5px);
+  background-size: 64px 64px;
+  transform: perspective(380px) rotateX(62deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 78%);
+  mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 78%);
+  opacity: var(--grid-opacity);
+  animation: grid-shimmer 7s ease-in-out infinite;
+}
+@keyframes grid-shimmer { 0%, 100% { opacity: calc(var(--grid-opacity) * .7); } 50% { opacity: var(--grid-opacity); } }
+
+/* ---------- טקסט ---------- */
+.neon-title {
+  font-family: var(--font-he);
+  font-weight: 900;
+  letter-spacing: .02em;
+  color: var(--text);
+  text-shadow:
+    0 0 calc(6px * var(--glow)) color-mix(in srgb, var(--cyan) 90%, transparent),
+    0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--cyan) 55%, transparent),
+    0 0 calc(40px * var(--glow)) color-mix(in srgb, var(--magenta) 40%, transparent);
+  position: relative;
+}
+.neon-sub { font-family: var(--font-neon); letter-spacing: .5em; color: var(--magenta); font-weight: 700;
+  text-shadow: 0 0 calc(8px * var(--glow)) color-mix(in srgb, var(--magenta) 80%, transparent); }
+.neon-dim { color: var(--text-dim); }
+
+/* glitch קצר (0.8 שנ'), בכניסה ובאירועים */
+.glitch { animation: glitch-skew .8s steps(1) 1; }
+.glitch::before, .glitch::after {
+  content: attr(data-text);
+  position: absolute; inset: 0;
+  opacity: 0;
+  animation: glitch-slice .8s steps(1) 1;
+}
+.glitch::before { color: var(--cyan); text-shadow: none; }
+.glitch::after { color: var(--magenta); text-shadow: none; }
+@keyframes glitch-skew {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-3px) skewX(-6deg); }
+  40% { transform: translateX(3px) skewX(5deg); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(1px) skewX(-3deg); }
+}
+@keyframes glitch-slice {
+  0%, 100% { opacity: 0; clip-path: inset(0 0 0 0); transform: none; }
+  15% { opacity: .9; clip-path: inset(10% 0 60% 0); transform: translateX(-5px); }
+  35% { opacity: .9; clip-path: inset(55% 0 12% 0); transform: translateX(5px); }
+  55% { opacity: .8; clip-path: inset(30% 0 35% 0); transform: translateX(-3px); }
+  75% { opacity: .7; clip-path: inset(70% 0 5% 0); transform: translateX(3px); }
+}
+
+/* ---------- כפתורי ניאון עם פינות חתוכות ---------- */
+.neon-btn-wrap {
+  --c: var(--cyan);
+  --cut: 14px;
+  display: block;
+  width: 100%;
+  filter:
+    drop-shadow(0 0 calc(5px * var(--glow)) color-mix(in srgb, var(--c) 85%, transparent))
+    drop-shadow(0 0 calc(14px * var(--glow)) color-mix(in srgb, var(--c) 40%, transparent));
+  transition: filter .15s ease, transform .1s ease;
+}
+.neon-btn-wrap.tone-magenta { --c: var(--magenta); }
+.neon-btn-wrap.small { --cut: 10px; }
+.neon-btn-wrap:not(.disabled):hover {
+  filter:
+    drop-shadow(0 0 calc(8px * var(--glow)) var(--c))
+    drop-shadow(0 0 calc(24px * var(--glow)) color-mix(in srgb, var(--c) 65%, transparent));
+}
+.neon-btn-wrap:not(.disabled):active { transform: scale(.98);
+  filter:
+    drop-shadow(0 0 calc(10px * var(--glow)) var(--c))
+    drop-shadow(0 0 calc(32px * var(--glow)) var(--c)); }
+.neon-btn-wrap.disabled { filter: none; opacity: .45; }
+
+.neon-btn {
+  --poly: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  position: relative;
+  display: flex; align-items: center; justify-content: center; gap: .6rem;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0 1.25rem;
+  border: 0;
+  color: var(--c);
+  font-family: var(--font-he);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: .03em;
+  background: var(--c);
+  clip-path: var(--poly);
+  cursor: pointer;
+  text-shadow: 0 0 calc(8px * var(--glow)) color-mix(in srgb, var(--c) 70%, transparent);
+}
+.small .neon-btn { min-height: 2.75rem; font-size: .98rem; }
+.neon-btn::before { /* מילוי כהה פנימי = מסגרת של 2px */
+  content: '';
+  position: absolute; inset: 2px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 16%, var(--bg-1)), var(--bg-0));
+  clip-path: polygon(calc(var(--cut) - 1px) 0, 100% 0, 100% calc(100% - var(--cut) + 1px), calc(100% - var(--cut) + 1px) 100%, 0 100%, 0 calc(var(--cut) - 1px));
+  transition: background .15s ease;
+}
+.neon-btn-wrap:not(.disabled):hover .neon-btn::before { background: linear-gradient(180deg, color-mix(in srgb, var(--c) 28%, var(--bg-1)), color-mix(in srgb, var(--c) 8%, var(--bg-0))); }
+.neon-btn-label { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: .6rem; }
+.neon-btn:disabled { cursor: default; }
+.neon-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* ---------- קלף ---------- */
+.ncard {
+  --w: 3.4rem;
+  --c: var(--cyan);
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: var(--w);
+  aspect-ratio: 5 / 7;
+  padding: 0;
+  font-family: var(--font-neon);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--c);
+  border-radius: calc(var(--w) * .13);
+  border: calc(var(--w) * .035) solid color-mix(in srgb, var(--c) 82%, transparent);
+  background:
+    radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--c) 9%, transparent), transparent 62%),
+    linear-gradient(165deg, #15112f 0%, #0a0918 100%);
+  box-shadow:
+    0 0 calc(var(--w) * .16 * var(--glow)) color-mix(in srgb, var(--c) 50%, transparent),
+    inset 0 0 calc(var(--w) * .14 * var(--glow)) color-mix(in srgb, var(--c) 20%, transparent);
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease, filter .15s ease;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ncard.suit-H, .ncard.suit-D { --c: var(--magenta); }
+.ncard.suit-C, .ncard.suit-S { --c: var(--cyan); }
+.ncard.sm { --w: 2.6rem; }
+.ncard.lg { --w: 4.6rem; }
+.ncard.hero { --w: 9rem; }
+.ncard[data-interactive='true'] { cursor: pointer; }
+.ncard[data-interactive='true']:active { transform: scale(.96); }
+
+.ncard .corner { position: absolute; display: flex; flex-direction: column; align-items: center; gap: calc(var(--w) * .01); }
+.ncard .corner.tl { top: calc(var(--w) * .07); left: calc(var(--w) * .09); }
+.ncard .corner.br { bottom: calc(var(--w) * .07); right: calc(var(--w) * .09); transform: rotate(180deg); }
+.ncard .rank { font-size: calc(var(--w) * .27); letter-spacing: -.04em; text-shadow: 0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 80%, transparent); }
+.ncard .rank.ten { font-size: calc(var(--w) * .23); letter-spacing: -.1em; }
+.ncard .pip-s { font-size: calc(var(--w) * .2); font-family: var(--font-he); }
+.ncard .pip {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-he);
+  font-size: calc(var(--w) * .44);
+  padding-top: calc(var(--w) * .02);
+  text-shadow: 0 0 calc(var(--w) * .2 * var(--glow)) color-mix(in srgb, var(--c) 70%, transparent);
+}
+
+.ncard.selected {
+  transform: translateY(calc(var(--w) * -.24));
+  box-shadow:
+    0 0 calc(var(--w) * .26 * var(--glow)) var(--c),
+    0 0 calc(var(--w) * .7 * var(--glow)) color-mix(in srgb, var(--c) 55%, transparent),
+    inset 0 0 calc(var(--w) * .2 * var(--glow)) color-mix(in srgb, var(--c) 35%, transparent);
+  border-color: var(--text);
+}
+.ncard.dim { opacity: .38; filter: saturate(.55); }
+.ncard:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+.ncard.back {
+  --c: var(--cyan);
+  background: linear-gradient(165deg, #120d2a, #080714);
+  overflow: hidden;
+}
+.ncard.back svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+@keyframes card-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
+.float { animation: card-float 5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-bg::after, .glitch, .glitch::before, .glitch::after, .float { animation: none !important; }
+  .neon-btn-wrap, .ncard { transition: none; }
+}

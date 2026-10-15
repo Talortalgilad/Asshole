@@ -6,9 +6,9 @@ import { ProfileScreen } from './ProfileScreen';
 import { UsernameScreen } from './UsernameScreen';
 import { WaitingRoom } from './WaitingRoom';
 
-type Props = { getAuth: AuthPayload; authKey: string; onSignOut: () => void };
+type Props = { getAuth: AuthPayload; authKey: string; onSignOut: () => void; onLinked?: (r: 'linked' | 'switched') => void };
 
-export function Room({ getAuth, authKey, onSignOut }: Props) {
+export function Room({ getAuth, authKey, onSignOut, onLinked = () => {} }: Props) {
   const g = useGameClient(getAuth, authKey);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -43,7 +43,8 @@ export function Room({ getAuth, authKey, onSignOut }: Props) {
   if (!me) {
     return (
       <UsernameScreen
-        title="בחר שם משתמש" submitLabel="המשך" initial={suggestUsername(g.profile.suggested)}
+        title={g.profile.isGuest ? 'בחר כינוי' : 'בחר שם משתמש'} submitLabel="המשך"
+        initial={g.profile.isGuest ? `אורח${Math.floor(100 + Math.random() * 900)}` : suggestUsername(g.profile.suggested)}
         serverError={g.profileError} onSubmit={g.actions.setUsername}
       />
     );
@@ -52,7 +53,7 @@ export function Room({ getAuth, authKey, onSignOut }: Props) {
     return (
       <ProfileScreen
         profile={me} dev={g.profile.dev} error={g.profileError}
-        onRename={g.actions.setUsername} onSignOut={onSignOut} onBack={() => setShowProfile(false)}
+        onRename={g.actions.setUsername} onSignOut={onSignOut} onBack={() => setShowProfile(false)} onLinked={onLinked}
       />
     );
   }

@@ -12,6 +12,8 @@ const HINTS: Record<string, string> = {
   'auth/operation-not-allowed': 'ספק Google לא מופעל ב-Firebase Authentication',
   'auth/network-request-failed': 'בעיית רשת מול Firebase',
   'auth/internal-error': 'שגיאה פנימית של Firebase',
+  'auth/admin-restricted-operation': 'כניסת אורח (Anonymous) לא מופעלת ב-Firebase Authentication',
+  'auth/credential-already-in-use': 'חשבון ה-Google הזה כבר מקושר למשתמש אחר',
   'auth/web-storage-unsupported': 'הדפדפן חוסם אחסון (עוגיות צד שלישי / מצב פרטי)',
 };
 

@@ -2,7 +2,7 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
-export type Identity = { uid: string; name: string; photoURL: string };
+export type Identity = { uid: string; name: string; photoURL: string; isGuest: boolean };
 
 /** מאמת את מה שהקליינט שלח ב-handshake ומחזיר זהות */
 export interface Verifier {
@@ -17,18 +17,21 @@ export function devVerifier(): Verifier {
     async verify(auth) {
       const { uid, name } = auth;
       if (typeof uid !== 'string' || !/^[\w-]{3,64}$/.test(uid)) throw new Error('bad uid');
-      return { uid, name: String(name || uid).slice(0, 16), photoURL: '' };
+      return { uid, name: String(name || uid).slice(0, 16), photoURL: '', isGuest: false };
     },
   };
 }
 
-export function tokenVerifier(verifyIdToken: (t: string) => Promise<{ uid: string; name?: string; picture?: string }>): Verifier {
+type DecodedToken = { uid: string; name?: string; picture?: string; firebase?: { sign_in_provider?: string } };
+
+export function tokenVerifier(verifyIdToken: (t: string) => Promise<DecodedToken>): Verifier {
   return {
     dev: false,
     async verify(auth) {
       if (typeof auth.token !== 'string' || !auth.token) throw new Error('missing token');
       const d = await verifyIdToken(auth.token);
-      return { uid: d.uid, name: d.name ?? '', photoURL: d.picture ?? '' };
+      // Firebase Anonymous Auth: sign_in_provider='anonymous'
+      return { uid: d.uid, name: d.name ?? '', photoURL: d.picture ?? '', isGuest: d.firebase?.sign_in_provider === 'anonymous' };
     },
   };
 }
