@@ -83,6 +83,14 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
   const inGame = seated && (phase === 'playing' || phase === 'exchange');
   const inGameRef = useRef(inGame);
   inGameRef.current = inGame;
+  // איזה אישור נדרש ליציאה: באמצע משחק / מארח שסוגר את השולחן / מארח שמעביר אחריות
+  const myUid = c.profile?.uid;
+  const isHost = !!c.table && !!myUid && c.table.hostId === myUid;
+  const otherHumans = (c.table?.seats ?? []).filter((x) => x && !x.isBot && x.uid !== myUid).length;
+  const confirmKind: 'game' | 'closeTable' | 'handover' | null =
+    !seated ? null : inGame ? 'game' : isHost ? (otherHumans === 0 ? 'closeTable' : 'handover') : null;
+  const confirmKindRef = useRef(confirmKind);
+  confirmKindRef.current = confirmKind;
   const bypass = useRef(false);
 
   // ---- אישור יציאה באמצע משחק ----
@@ -90,33 +98,33 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
   const [pending, setPending] = useState<Pending | null>(null);
   const sess = useSession();
 
-  const leaveAndGo = useCallback(async (path: string) => {
-    await c.actions.leaveTable();
+  const leaveAndGo = useCallback(async (path: string, reason = 'ui:leave') => {
+    await c.actions.leaveTable(reason);
     bypass.current = true;
     nav(path);
     setTimeout(() => { bypass.current = false; }, 600);
   }, [c.actions, nav]);
 
-  const go = useCallback((path: string) => {
+  const go = useCallback((path: string, reason = 'ui:nav') => {
     if (!seated) return nav(path);
     if (loc.pathname.startsWith('/table/') === false && path === loc.pathname) return;
-    if (inGameRef.current) return setPending({ kind: 'leave', run: () => void leaveAndGo(path) });
-    void leaveAndGo(path);
+    if (confirmKindRef.current) return setPending({ kind: 'leave', run: () => void leaveAndGo(path, reason) });
+    void leaveAndGo(path, reason);
   }, [seated, nav, leaveAndGo, loc.pathname]);
 
   const doSignOut = useCallback(async () => {
-    if (seated) await c.actions.leaveTable();
+    if (seated) await c.actions.leaveTable('ui:signout');
     await sess.signOut();
   }, [seated, c.actions, sess]);
 
   const requestSignOut = useCallback(() => {
-    if (inGameRef.current || c.profile?.profile?.isGuest) setPending({ kind: 'signout' });
+    if (confirmKindRef.current || c.profile?.profile?.isGuest) setPending({ kind: 'signout' });
     else void doSignOut();
   }, [c.profile, doSignOut]);
 
   // כפתור "אחורה" של הדפדפן/הטלפון באמצע משחק: חוסמים ושואלים
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    !bypass.current && inGameRef.current && currentLocation.pathname.startsWith('/table/') && !nextLocation.pathname.startsWith('/table/'));
+    !bypass.current && !!confirmKindRef.current && currentLocation.pathname.startsWith('/table/') && !nextLocation.pathname.startsWith('/table/'));
   useEffect(() => {
     if (blocker.state === 'blocked') setPending({ kind: 'blocker' });
   }, [blocker.state]);
@@ -126,7 +134,7 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
   const onTableRoute = loc.pathname.startsWith('/table/');
   useEffect(() => {
     if (onTableRoute || !seated || inGame || c.leaving) return;
-    const t = setTimeout(() => void c.actions.leaveTable(), 200);
+    const t = setTimeout(() => void c.actions.leaveTable('auto:not-on-table-route'), 200);
     return () => clearTimeout(t);
   }, [onTableRoute, seated, inGame, c.leaving, c.actions]);
 
@@ -213,10 +221,12 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
 
         {pending && (
           <ConfirmDialog
-            message={pending.kind === 'signout' && !inGame
+            message={pending.kind === 'signout' && !confirmKind
               ? 'אתה מחובר כאורח. אם תתנתק, חשבון האורח וההתקדמות שלו יאבדו. להתנתק?'
+              : confirmKind === 'closeTable' ? 'לצאת ולסגור את השולחן?'
+              : confirmKind === 'handover' ? 'לצאת? הניהול של השולחן יעבור לשחקן אחר.'
               : 'בוט יחליף אותך ותדורג אחרון. לצאת?'}
-            confirmLabel={pending.kind === 'signout' && !inGame ? 'להתנתק' : 'לצאת'}
+            confirmLabel={pending.kind === 'signout' && !confirmKind ? 'להתנתק' : 'לצאת'}
             cancelLabel="להישאר"
             onCancel={() => { if (pending.kind === 'blocker') blocker.reset?.(); setPending(null); }}
             onConfirm={async () => {
@@ -225,7 +235,7 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
               if (p.kind === 'leave') p.run();
               else if (p.kind === 'signout') await doSignOut();
               else {
-                await c.actions.leaveTable();
+                await c.actions.leaveTable('ui:back-confirmed');
                 bypass.current = true;
                 blocker.proceed?.();
                 setTimeout(() => { bypass.current = false; }, 600);

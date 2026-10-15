@@ -48,7 +48,7 @@ export function AppBar() {
   const showBack = !p.startsWith('/lobby');
 
   const back = () => {
-    if (onTable) return guard.go('/lobby');
+    if (onTable) return guard.go('/lobby', 'ui:back-button');
     // היסטוריה של הדפדפן אם יש, אחרת ללובי
     if ((window.history.state?.idx ?? 0) > 0) nav(-1);
     else nav('/lobby');

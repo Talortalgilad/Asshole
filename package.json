@@ -13,9 +13,13 @@
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
     "start": "npm run start -w server",
     "build": "npm run build -w client",
-    "dev:client": "npm run dev -w client"
+    "dev:client": "npm run dev -w client",
+    "e2e": "npm run build && node e2e/mobile.e2e.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.0"
   }
 }

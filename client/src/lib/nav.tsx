@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 
 /** ניווט עם בקרת יציאה מהשולחן: באמצע משחק מבקש אישור, בחדר המתנה יוצא מיד */
 export type NavGuard = {
-  go(path: string): void;
+  go(path: string, reason?: string): void;
   /** האם המשתמש יושב כרגע בשולחן */
   seated: boolean;
   /** התנתקות (כולל יציאה מהשולחן ואישור לאורח) */

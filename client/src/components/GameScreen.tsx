@@ -88,7 +88,7 @@ export function GameScreen() {
       {view.phase === 'finished' && c.results && (
         <FinishScreen
           results={c.results} uid={view.me} isHost={isHost} outcome={c.scored} isGuest={!!c.profile?.profile?.isGuest}
-          onUseDeck={c.actions.setDeck} onAgain={c.actions.again} onWaiting={c.actions.backToWaiting} onExit={() => guard.go('/lobby')}
+          onUseDeck={c.actions.setDeck} onAgain={c.actions.again} onWaiting={c.actions.backToWaiting} onExit={() => guard.go('/lobby', 'ui:finish-exit')}
         />
       )}
     </div>

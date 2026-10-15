@@ -31,6 +31,9 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const noticeId = useRef(0);
   const pending = useRef<{ resolve(v: { tableId: string }): void; reject(e: ClientError): void } | null>(null);
   const leaveWaiters = useRef<(() => void)[]>([]);
+  const tableIdRef = useRef<string | null>(null);
+  /** למה ביקשנו לצאת מהשולחן (ui:* = לחיצה מפורשת של המשתמש; auto:* = אוטומטי, ומוצג בהודעה) */
+  const leaveReason = useRef<string | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -64,6 +67,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
     const say = (text: string) => setNotice({ id: ++noticeId.current, text });
     const resetTable = () => {
       viewRef.current = null;
+      tableIdRef.current = null;
       setTableId(null); setResumeTableId(null); setTable(null); setView(null); setExchange(null); setResults(null); setScored(null); setLog([]); setClosingPlay(null);
       setLeaving(false);
       leaveWaiters.current.splice(0).forEach((f) => f());
@@ -78,13 +82,27 @@ function useClientState(getAuth: AuthPayload, key: string) {
     socket.on('lobby:state', (l: LobbyState) => setLobby(l));
 
     socket.on('table:joined', (j: { tableId: string }) => {
+      tableIdRef.current = j.tableId;
       setTableId(j.tableId);
       if (pending.current) { pending.current.resolve(j); pending.current = null; } else setResumeTableId(j.tableId);
     });
-    socket.on('table:left', () => resetTable());
+    socket.on('table:left', () => {
+      const r = leaveReason.current;
+      leaveReason.current = null;
+      // יציאה אוטומטית (לא לחיצה של המשתמש) מוצגת עם קוד סיבה, כדי שאפשר יהיה לאתר אותה
+      if (r && !r.startsWith('ui:')) say(`יצאת מהשולחן (${r})`);
+      resetTable();
+    });
+    // הסנכרון בכל חיבור: אם חשבתי שאני בשולחן והשרת לא מכיר אותו (נסגר בזמן שהייתי מנותק)
+    socket.on('session:state', (s: { tableId: string | null }) => {
+      if (tableIdRef.current && s.tableId !== tableIdRef.current) {
+        say('השולחן נסגר בזמן שהיית מנותק (server:table-gone)');
+        resetTable();
+      }
+    });
     socket.on('table:state', (t: TableState) => {
       setTable(t);
-      setTableId((cur) => cur ?? t.tableId);
+      setTableId((cur) => { const v = cur ?? t.tableId; tableIdRef.current = v; return v; });
       if (t.phase === 'waiting') { viewRef.current = null; setView(null); setExchange(null); setResults(null); setScored(null); setLog([]); }
       if (t.phase === 'exchange') { viewRef.current = null; setView(null); setResults(null); setScored(null); }
     });
@@ -131,8 +149,8 @@ function useClientState(getAuth: AuthPayload, key: string) {
       clearTimeout(errTimer);
       errTimer = setTimeout(() => setError(null), 3500);
     });
-    socket.on('room:kicked', () => { say('המארח הוציא אותך מהשולחן'); resetTable(); });
-    socket.on('room:left', () => { say('הוחלפת בבוט ויצאת מהשולחן'); resetTable(); });
+    socket.on('room:kicked', () => { say('המארח הוציא אותך מהשולחן (server:kicked)'); resetTable(); });
+    socket.on('room:left', () => { say('הוחלפת בבוט ויצאת מהשולחן (server:replaced)'); resetTable(); });
     return () => { clearTimeout(errTimer); clearTimeout(closeTimer); socket.close(); };
   }, [key]);
 
@@ -157,8 +175,10 @@ function useClientState(getAuth: AuthPayload, key: string) {
     createTable: (o: { maxPlayers: 4 | 5; isPrivate: boolean; name: string }) => request('table:create', o),
     joinTable: (o: { tableId?: string; code?: string }) => request('table:join', o),
     /** יציאה מהשולחן; מסתיים אחרי שהשרת אישר (table:left), או אחרי 3 שניות */
-    leaveTable: () => new Promise<void>((resolve) => {
+    leaveTable: (reason = 'ui:leave') => new Promise<void>((resolve) => {
       if (!socketRef.current) return resolve();
+      console.warn('[nav] leaving table:', reason);
+      leaveReason.current = reason;
       setLeaving(true);
       const t = setTimeout(() => { setLeaving(false); resolve(); }, 3000);
       leaveWaiters.current.push(() => { clearTimeout(t); resolve(); });

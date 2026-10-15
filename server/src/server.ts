@@ -178,6 +178,9 @@ export function createGameServer(opts: ServerOptions = {}) {
         socket.emit('table:joined', { tableId: t.tableId, inviteCode: t.inviteCode });
       }
     }
+    // סנכרון בכל חיבור (גם חיבור מחדש): באיזה שולחן אני יושב עכשיו. אם הקליינט חושב שהוא בשולחן שכבר נסגר
+    // (למשל ניתוק ארוך במובייל), הוא יידע וירד ללובי עם הסבר, במקום להישאר על מסך ישן.
+    socket.emit('session:state', { tableId: joinedTable()?.tableId ?? null });
 
     const needProfile = (): Profile | null => {
       const p = profileOf();
