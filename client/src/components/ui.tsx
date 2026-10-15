@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { rankInfo, rankProgress } from '@asshole/shared';
 
 /** מקפל כל רצף של אנגלית/ספרות ב-<bdi>, כדי שסוגריים ופיסוק סביבו לא יתהפכו בטקסט עברי (RTL). */
 export function Mixed({ children }: { children: string }) {
@@ -60,4 +61,30 @@ export function Seconds({ deadline }: { deadline: number }) {
   }, []);
   const s = Math.max(0, Math.ceil((deadline - now) / 1000));
   return <span className={`tabular-nums font-extrabold ${s <= 5 ? 't-magenta' : 't-cyan'}`} style={{ fontFamily: 'var(--font-he)' }}>{s}</span>;
+}
+
+
+/** תג דרגה: אימוג'י + שם (compact = אימוג'י בלבד) */
+export function RankChip({ rank, compact }: { rank: number | null | undefined; compact?: boolean }) {
+  if (rank === null || rank === undefined) return null;
+  const r = rankInfo(rank);
+  return (
+    <span className="chip ghost" title={r.label} aria-label={`דרגה: ${r.label}`}>
+      <span aria-hidden="true">{r.emoji}</span>{!compact && r.label}
+    </span>
+  );
+}
+
+/** פס התקדמות לדרגה הבאה */
+export function RankProgress({ points }: { points: number }) {
+  const p = rankProgress(points);
+  if (!p) return <p className="label-dim text-center">הדרגה הגבוהה ביותר 👑</p>;
+  return (
+    <div>
+      <div className="timer-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p.fraction * 100)}>
+        <i style={{ width: `${p.fraction * 100}%` }} />
+      </div>
+      <p className="label-dim mt-1 text-center">עוד {p.remaining} נקודות ל{p.next.emoji} {p.next.label}</p>
+    </div>
+  );
 }

@@ -1,4 +1,5 @@
 import { POINTS, titlesForOrder } from './cards';
+import type { UserStats } from './profile';
 import type { Title } from './types';
 
 export type Participant = { uid: string; isGuest: boolean };
@@ -49,3 +50,16 @@ export type LeaderboardState = { period: 'all' | 'month'; rows: LeaderboardRow[]
 export function sortLeaderboard<T extends { points: number; president: number; games: number }>(rows: T[]): T[] {
   return rows.slice().sort((a, b) => b.points - a.points || b.president - a.president || a.games - b.games);
 }
+
+/** תוצאה אישית אחרי משחק (נשלחת לכל שחקן אנושי באירוע game:scored) */
+export type GameOutcome = {
+  counted: boolean;
+  reason?: ScoreRow['reason'] | 'error';
+  place: number;
+  title: Title | null;
+  points: number;
+  /** הסטטיסטיקה אחרי המשחק (null אם לא נספר/לא נשמר) */
+  stats: UserStats | null;
+  rankBefore: number | null;
+  rankAfter: number | null;
+};

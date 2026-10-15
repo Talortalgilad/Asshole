@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClient, type ClientError, type LobbyTable } from '../lib/client';
-import { Avatar, GuestTag, Mixed, Panel } from '../components/ui';
+import { Avatar, GuestTag, Mixed, Panel, RankChip } from '../components/ui';
 import { NeonButton } from '../components/NeonButton';
 
 const STATUS: Record<string, string> = { waiting: 'ממתין', exchange: 'החלפת קלפים', playing: 'במשחק', finished: 'סיים משחק' };
@@ -156,6 +156,7 @@ export function LobbyPage() {
               <li key={u.uid} className={`row-card flex items-center gap-2 p-2 ${u.uid === me?.uid ? 'active' : ''}`}>
                 <Avatar url={u.photoURL} name={u.name} size={32} />
                 <span className="min-w-0 flex-1 truncate font-bold" style={{ fontFamily: 'var(--font-he)' }}>{u.name}{u.uid === me?.uid ? ' (אני)' : ''}</span>
+                <RankChip rank={u.rank} compact />
                 {u.isGuest && <GuestTag />}
                 <span className="chip ghost" style={u.at ? undefined : { opacity: .7 }}>{u.at ?? 'בלובי'}</span>
               </li>

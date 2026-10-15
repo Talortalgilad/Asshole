@@ -47,21 +47,14 @@ async function playGame(humans: TestClient[], leaver?: TestClient) {
   if (leaver) leaver.s.emit('table:leave');
   await until(() => humans.every((c) => c.scored), 30_000);
 }
-// game:scored נאסף כאן
-function track(c: TestClient) {
-  const x = c as TestClient & { scored?: any };
-  c.s.on('game:scored', (o) => (x.scored = o));
-  return x;
-}
-
 describe('ניקוד אחרי משחק', () => {
   it('שני משתמשי Google + בוטים: נספר לשניהם, נשמר, ובטבלה', async () => {
     const { port, store } = await setup();
-    const a = track(await player(port, 'tok:g1:דנה', 'דנה'));
-    const b = track(await player(port, 'tok:g2:יוסי', 'יוסי'));
+    const a = (await player(port, 'tok:g1:דנה', 'דנה'));
+    const b = (await player(port, 'tok:g2:יוסי', 'יוסי'));
     await playGame([a, b]);
     for (const c of [a, b]) {
-      const o = (c as any).scored;
+      const o = c.scored;
       expect(o.counted).toBe(true);
       expect(o.points).toBe(POINTS[o.title as keyof typeof POINTS]);
       expect(o.stats.games).toBe(1);
@@ -74,15 +67,14 @@ describe('ניקוד אחרי משחק', () => {
 
   it('טבלת האלופים: ממוינת, כוללת שורה שלי, ו"החודש" נפרדת', async () => {
     const { port } = await setup();
-    const a = track(await player(port, 'tok:g1:דנה', 'דנה'));
-    const b = track(await player(port, 'tok:g2:יוסי', 'יוסי'));
-    let lb: any = null;
-    a.s.on('leaderboard:state', (x) => (lb = x));
+    const a = (await player(port, 'tok:g1:דנה', 'דנה'));
+    const b = (await player(port, 'tok:g2:יוסי', 'יוסי'));
     await playGame([a, b]);
     for (const period of ['all', 'month'] as const) {
-      lb = null;
+      a.leaderboard = null;
       a.s.emit('leaderboard:get', { period });
-      await until(() => lb !== null);
+      await until(() => a.leaderboard !== null);
+      const lb = a.leaderboard;
       expect(lb.period).toBe(period);
       expect(lb.rows).toHaveLength(2);
       expect(lb.rows.map((r: any) => r.rank)).toEqual([1, 2]);
@@ -93,62 +85,58 @@ describe('ניקוד אחרי משחק', () => {
 
   it('משתמש Google בודד מול בוטים: לא נספר ולא בטבלה', async () => {
     const { port, store } = await setup();
-    const a = track(await player(port, 'tok:g1:דנה', 'דנה'));
+    const a = (await player(port, 'tok:g1:דנה', 'דנה'));
     await playGame([a]);
-    expect((a as any).scored).toMatchObject({ counted: false, reason: 'bots_only', stats: null });
+    expect(a.scored).toMatchObject({ counted: false, reason: 'bots_only', stats: null });
     expect((await store.get('g1'))!.stats.games).toBe(0);
-    let lb: any = null;
-    a.s.on('leaderboard:state', (x) => (lb = x));
     a.s.emit('leaderboard:get', { period: 'all' });
-    await until(() => lb !== null);
-    expect(lb.rows).toHaveLength(0);
-    expect(lb.me).toBeNull();
+    await until(() => a.leaderboard !== null);
+    expect(a.leaderboard.rows).toHaveLength(0);
+    expect(a.leaderboard.me).toBeNull();
   });
 
   it('Google + אורח: לא נספר ל-Google, נספר אישית לאורח, ואורח לא בטבלה', async () => {
     const { port, store } = await setup();
-    const g = track(await player(port, 'tok:g1:דנה', 'דנה'));
-    const s = track(await player(port, 'anon:guest1', 'אורח1'));
+    const g = (await player(port, 'tok:g1:דנה', 'דנה'));
+    const s = (await player(port, 'anon:guest1', 'אורח1'));
     await playGame([g, s]);
-    expect((g as any).scored).toMatchObject({ counted: false, reason: 'need_two_google' });
-    expect((s as any).scored).toMatchObject({ counted: true });
+    expect(g.scored).toMatchObject({ counted: false, reason: 'need_two_google' });
+    expect(s.scored).toMatchObject({ counted: true });
     expect((await store.get('guest1'))!.stats.games).toBe(1);
     expect((await store.get('g1'))!.stats.games).toBe(0);
-    let lb: any = null;
-    s.s.on('leaderboard:state', (x) => (lb = x));
     s.s.emit('leaderboard:get', { period: 'all' });
-    await until(() => lb !== null);
-    expect(lb.rows).toHaveLength(0); // אורחים לא מופיעים
-    expect(lb.me).toBeNull();
+    await until(() => s.leaderboard !== null);
+    expect(s.leaderboard.rows).toHaveLength(0); // אורחים לא מופיעים
+    expect(s.leaderboard.me).toBeNull();
   });
 
   it('שני אורחים: ניקוד אישי לשניהם, בלי טבלה', async () => {
     const { port, store } = await setup();
-    const a = track(await player(port, 'anon:g1', 'אורחא'));
-    const b = track(await player(port, 'anon:g2', 'אורחב'));
+    const a = (await player(port, 'anon:g1', 'אורחא'));
+    const b = (await player(port, 'anon:g2', 'אורחב'));
     await playGame([a, b]);
-    expect((a as any).scored.counted && (b as any).scored.counted).toBe(true);
+    expect(a.scored.counted && b.scored.counted).toBe(true);
     expect((await store.get('g1'))!.isGuest).toBe(true);
     expect((await store.get('g1'))!.stats.games).toBe(1);
   });
 
   it('מי שיצא באמצע נספר במקום האחרון, ומקבל ניקוד של אסהול', async () => {
     const { port } = await setup();
-    const a = track(await player(port, 'tok:g1:דנה', 'דנה'));
-    const b = track(await player(port, 'tok:g2:יוסי', 'יוסי'));
+    const a = (await player(port, 'tok:g1:דנה', 'דנה'));
+    const b = (await player(port, 'tok:g2:יוסי', 'יוסי'));
     await playGame([a, b], b);
-    const o = (b as any).scored;
+    const o = b.scored;
     expect(o).toMatchObject({ counted: true, place: 4, title: 'asshole', points: -2 });
   });
 
   it('אחרי עליית דרגה: rankBefore/rankAfter מדווחים', async () => {
     const { port, store } = await setup();
-    const a = track(await player(port, 'tok:g1:דנה', 'דנה'));
-    const b = track(await player(port, 'tok:g2:יוסי', 'יוסי'));
+    const a = (await player(port, 'tok:g1:דנה', 'דנה'));
+    const b = (await player(port, 'tok:g2:יוסי', 'יוסי'));
     (await store.get('g1'))!.stats.points = 9; // ממש לפני "חבר מועצה" (10)
     (await store.get('g2'))!.stats.points = 9;
     await playGame([a, b]);
-    const o = (a as any).scored;
+    const o = a.scored;
     expect(o.rankBefore).toBe(0);
     expect(o.rankAfter).toBe(rankIndex(9 + o.points));
   });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useClient } from '../lib/client';
-import { Avatar, BotTag, GuestTag, Panel } from './ui';
+import { Avatar, BotTag, GuestTag, Panel, RankChip } from './ui';
 import { NeonButton } from './NeonButton';
 
 async function copy(text: string): Promise<boolean> {
@@ -66,6 +66,7 @@ export function WaitingRoom() {
                   {s.name}{s.uid === uid ? ' (אני)' : ''}
                 </span>
                 {s.uid === table.hostId && <span className="chip" title="מארח">👑 מארח</span>}
+                <RankChip rank={s.rank} />
                 {s.isGuest && <GuestTag />}
                 {s.isBot && !s.name.includes('🤖') && <BotTag />}
                 {host && s.uid !== uid && (

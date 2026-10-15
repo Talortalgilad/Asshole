@@ -1,7 +1,7 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import {
   EMPTY_STATS, rankIndex, sortLeaderboard, validateUsername,
-  type LeaderboardRow, type LeaderboardState, type Profile, type ScoreRow, type Title, type UserStats,
+  type GameOutcome, type LeaderboardRow, type LeaderboardState, type Profile, type ScoreRow, type Title, type UserStats,
 } from '@asshole/shared';
 
 export type SetUsernameResult =
@@ -18,17 +18,7 @@ export type GameRecord = {
   people: Record<string, { username: string; photoURL: string }>;
 };
 
-export type GameOutcome = {
-  counted: boolean;
-  reason?: ScoreRow['reason'] | 'error';
-  place: number;
-  title: Title | null;
-  points: number;
-  /** הסטטיסטיקה אחרי המשחק (null אם לא נספר/לא נשמר) */
-  stats: UserStats | null;
-  rankBefore: number | null;
-  rankAfter: number | null;
-};
+export type { GameOutcome };
 
 const monthKey = (t: number) => new Date(t).toISOString().slice(0, 7); // YYYY-MM
 

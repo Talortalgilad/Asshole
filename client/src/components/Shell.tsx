@@ -31,7 +31,7 @@ export function Shell() {
 function DevShell() {
   const [uid] = useState(getUid);
   const [name, setName] = useState(readDevName);
-  const getAuth = useCallback(async () => ({ uid, name }), [uid, name]);
+  const getAuth = useCallback(async () => ({ uid, name, guest: params.has('guest') }), [uid, name]);
   const session = useMemo<Session>(() => ({ dev: true, signOut: async () => { location.href = '/'; }, relink: () => {} }), []);
   if (!name) {
     return <NameScreen onSubmit={(n) => { saveName(n); try { sessionStorage.setItem(DEV_NAME_KEY, n); } catch { /* */ } setName(n); }} />;

@@ -15,6 +15,7 @@ const port = Number(process.env.PORT ?? 3001);
 
 const server = createGameServer({
   verifier: backend.verifier,
+  devScoring: process.env.DEV_SCORING === '1', // רק לוקאל: ניקוד בזיכרון בלי Firebase
   userStore: backend.db ? new FirestoreUserStore(backend.db) : new MemoryUserStore(),
   players: Number(process.env.PLAYERS ?? 4),
   turnMs: Number(process.env.TURN_MS ?? 30_000),

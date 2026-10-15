@@ -42,6 +42,8 @@ export type ServerOptions = {
   /** ברירת מחדל: מצב פיתוח (בלי אימות). בפרודקשן: createBackendFromEnv() */
   verifier?: Verifier;
   userStore?: UserStore;
+  /** לבדיקות מקומיות בלבד: ניקוד ו-store בזיכרון גם במצב פיתוח (בלי אימות) */
+  devScoring?: boolean;
 };
 
 /** שרת עם כמה שולחנות במקביל. בלי service account: מצב פיתוח (הקליינט שולח { uid, name }). */
@@ -90,7 +92,8 @@ export function createGameServer(opts: ServerOptions = {}) {
   const verifier = opts.verifier ?? devVerifier();
   const store: UserStore = opts.userStore ?? new MemoryUserStore();
   // ניקוד נשמר רק עם אימות אמיתי (במצב פיתוח אין משתמשים שמורים)
-  const onGameEnd = verifier.dev ? undefined : async (g: Parameters<UserStore['recordGame']>[0]) => {
+  const usesStore = !verifier.dev || !!opts.devScoring;
+  const onGameEnd = !usesStore ? undefined : async (g: Parameters<UserStore['recordGame']>[0]) => {
     const out = await store.recordGame(g);
     for (const [uid, o] of Object.entries(out)) {
       const e = online.get(uid);
@@ -122,9 +125,11 @@ export function createGameServer(opts: ServerOptions = {}) {
     try {
       socket.data.identity = id;
       // במצב פיתוח אין שלב שם משתמש: השם מגיע מהקליינט
-      socket.data.profile = verifier.dev
+      socket.data.profile = verifier.dev && !opts.devScoring
         ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null, isGuest: false } as unknown as Profile)
-        : await store.get(id.uid);
+        : verifier.dev
+          ? ((await store.get(id.uid)) ?? (await store.setUsername(id.uid, id.name, '', id.isGuest).then((r) => (r.ok ? r.profile : null))))
+          : await store.get(id.uid);
       // אורח ששדרג ל-Google (linkWithPopup): אותו uid. תופסים את הכינוי שלו כשם משתמש קבוע;
       // אם הוא כבר תפוס – מבקשים לבחור שם (הסטטיסטיקות נשמרות)
       const profile = socket.data.profile as Profile | null;

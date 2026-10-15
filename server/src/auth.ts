@@ -17,7 +17,8 @@ export function devVerifier(): Verifier {
     async verify(auth) {
       const { uid, name } = auth;
       if (typeof uid !== 'string' || !/^[\w-]{3,64}$/.test(uid)) throw new Error('bad uid');
-      return { uid, name: String(name || uid).slice(0, 16), photoURL: '', isGuest: false };
+      // guest: רק לבדיקות מקומיות עם DEV_SCORING (מדמה כניסת אורח)
+      return { uid, name: String(name || uid).slice(0, 16), photoURL: '', isGuest: auth.guest === true };
     },
   };
 }

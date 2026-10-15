@@ -1,5 +1,5 @@
 import { TITLE_LABEL, type SeatView } from '@asshole/shared';
-import { BotTag, GuestTag, Seconds, TimerBar } from './ui';
+import { BotTag, GuestTag, RankChip, Seconds, TimerBar } from './ui';
 import { NeonCard } from './NeonCard';
 
 type Props = { seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null };
@@ -13,6 +13,7 @@ export function Seat({ seat, isTurn, passed, deadline }: Props) {
         <span className="truncate text-sm font-extrabold">{seat.name}</span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-1">
+        <RankChip rank={seat.rank} compact />
         {seat.title && <span className="chip ghost">{TITLE_LABEL[seat.title]}</span>}
         {seat.isGuest && <GuestTag />}
         {seat.isBot && !seat.name.includes('🤖') && <BotTag />}

@@ -9,7 +9,7 @@ import { Hand } from './Hand';
 import { NeonButton } from './NeonButton';
 import { Seat } from './Seat';
 import { TableCenter } from './TableCenter';
-import { Seconds, TimerBar } from './ui';
+import { RankChip, Seconds, TimerBar } from './ui';
 
 export function GameScreen() {
   const c = useClient();
@@ -71,6 +71,7 @@ export function GameScreen() {
         <div className="flex items-center justify-between gap-2 px-4 text-sm" style={{ fontFamily: 'var(--font-he)' }}>
           <span className={`flex items-center gap-2 px-2 py-0.5 font-extrabold ${myTurn ? 'turn-ring' : ''}`}>
             {me.name} (אני) · {me.cardCount} קלפים
+            <RankChip rank={me.rank} compact />
             {me.title && <span className="chip ghost">{TITLE_LABEL[me.title]}</span>}
           </span>
           {myTurn && view.turnDeadline ? <Seconds deadline={view.turnDeadline} /> : <span className="label-dim">{me.place ? `סיימת: מקום ${me.place}` : `התור של ${turnName}`}</span>}
@@ -86,7 +87,7 @@ export function GameScreen() {
 
       {view.phase === 'finished' && c.results && (
         <FinishScreen
-          results={c.results} uid={view.me} isHost={isHost}
+          results={c.results} uid={view.me} isHost={isHost} outcome={c.scored} isGuest={!!c.profile?.profile?.isGuest}
           onAgain={c.actions.again} onWaiting={c.actions.backToWaiting} onExit={() => guard.go('/lobby')}
         />
       )}

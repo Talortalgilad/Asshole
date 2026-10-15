@@ -3,7 +3,8 @@ import type { Profile } from '@asshole/shared';
 import { UsernameScreen } from './UsernameScreen';
 import { linkGuestWithGoogle } from '../lib/firebase';
 import { describeAuthError, withTimeout } from '../lib/authErrors';
-import { Avatar, GuestTag, Mixed, Panel } from './ui';
+import { rankIndex } from '@asshole/shared';
+import { Avatar, GuestTag, Mixed, Panel, RankChip, RankProgress } from './ui';
 import { NeonButton } from './NeonButton';
 
 type Props = {
@@ -50,6 +51,18 @@ export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLink
         <h2 className="h-neon flex items-center gap-2 text-3xl">{profile.username}{profile.isGuest && <GuestTag />}</h2>
         {profile.isGuest && <p className="label-dim">אתה משחק כאורח. ההתקדמות נשמרת רק במכשיר הזה, ולא תופיע בטבלת האלופים.</p>}
       </div>
+
+      {s && (
+        <Panel tone="cyan" small>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <RankChip rank={rankIndex(s.points)} />
+              <span className="t-cyan text-2xl font-black tabular-nums">{s.points}<span className="label-dim text-sm"> נק'</span></span>
+            </div>
+            <RankProgress points={s.points} />
+          </div>
+        </Panel>
+      )}
 
       {rows.length > 0 && (
         <dl className="grid grid-cols-2 gap-2.5">
