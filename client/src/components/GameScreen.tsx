@@ -1,27 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { GameView } from '@asshole/shared';
-import type { CenterPlay, GameResult } from '../lib/useGameClient';
-import type { Banner } from '../lib/game';
+import { TITLE_LABEL, getLegalPlays, trickFromView } from '@asshole/shared';
+import { useClient } from '../lib/client';
 import { checkSelection, opponentsInOrder } from '../lib/game';
+import { useNavGuard } from '../lib/nav';
 import { Banners } from './Banners';
 import { FinishScreen } from './FinishScreen';
 import { Hand } from './Hand';
+import { NeonButton } from './NeonButton';
 import { Seat } from './Seat';
 import { TableCenter } from './TableCenter';
-import { TurnTimer } from './TurnTimer';
+import { Seconds, TimerBar } from './ui';
 
-type Props = {
-  view: GameView;
-  banners: Banner[];
-  log: string[];
-  closing: CenterPlay;
-  results: GameResult[] | null;
-  isHost: boolean;
-  error: string | null;
-  actions: { play(ids: string[]): void; pass(): void; again(): void; lobby(): void };
-};
-
-export function GameScreen({ view, banners, log, closing, results, isHost, error, actions }: Props) {
+export function GameScreen() {
+  const c = useClient();
+  const guard = useNavGuard();
+  const view = c.view!;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showLog, setShowLog] = useState(false);
   const me = view.seats.find((s) => s.isMe)!;
@@ -31,65 +24,72 @@ export function GameScreen({ view, banners, log, closing, results, isHost, error
   // מנקים בחירה כשהתור עובר או שקלפים יצאו מהיד
   useEffect(() => {
     setSelected((s) => {
-      const ids = new Set(view.hand.map((c) => c.id));
+      const ids = new Set(view.hand.map((x) => x.id));
       const next = new Set([...s].filter((id) => ids.has(id) && myTurn));
       return next.size === s.size ? s : next;
     });
   }, [view.hand, myTurn]);
 
-  const selectedCards = useMemo(() => view.hand.filter((c) => selected.has(c.id)), [view.hand, selected]);
+  const selectedCards = useMemo(() => view.hand.filter((x) => selected.has(x.id)), [view.hand, selected]);
   const check = useMemo(() => checkSelection(view, selectedCards), [view, selectedCards]);
-  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  // קלפים שמופיעים באיזשהו מהלך חוקי עכשיו; השאר מעומעמים
+  const playable = useMemo(() => {
+    if (!myTurn) return null;
+    return new Set(getLegalPlays(view.hand, trickFromView(view), view.firstMove).flat().map((x) => x.id));
+  }, [myTurn, view]);
 
-  const play = () => { if (myTurn && check.ok) { actions.play([...selected]); setSelected(new Set()); } };
+  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const play = () => { if (myTurn && check.ok) { c.actions.play([...selected]); setSelected(new Set()); } };
   const hint = !myTurn ? '' : selected.size === 0 ? (view.trick.count === null ? 'בחר קלפים לפתיחה' : 'בחר קלפים או עשה פס') : check.ok ? '' : check.reason;
+  const isHost = c.table?.hostId === view.me;
+  const turnName = view.seats.find((s) => s.id === view.turn)?.name ?? '';
 
   return (
-    <div className="relative mx-auto flex h-dvh max-w-3xl flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-      <Banners banners={banners} />
+    <div className="relative flex h-full flex-col">
+      <Banners banners={c.banners} />
 
-      <header className="flex items-center justify-between px-3 pt-2 text-xs text-green-100/70">
-        <span>משחק {view.handNumber}</span>
-        <button onClick={() => setShowLog((v) => !v)} className="rounded-md bg-black/25 px-2 py-1">{showLog ? 'הסתר יומן' : 'יומן מהלכים'}</button>
-      </header>
+      <div className="flex items-center justify-between px-3 pt-2 text-xs">
+        <span className="label-dim">משחק {view.handNumber}</span>
+        <button onClick={() => setShowLog((v) => !v)} className="chip ghost" style={{ cursor: 'pointer' }} aria-expanded={showLog}>{showLog ? 'הסתר יומן' : 'יומן מהלכים'}</button>
+      </div>
 
       <div className="flex justify-center gap-2 px-2 pt-2">
         {opponentsInOrder(view).map((s) => (
-          <Seat
-            key={s.id} seat={s} isTurn={view.phase === 'playing' && view.turn === s.id}
-            passed={view.trick.passed.includes(s.id)} deadline={view.turnDeadline}
-          />
+          <Seat key={s.id} seat={s} isTurn={view.phase === 'playing' && view.turn === s.id} passed={view.trick.passed.includes(s.id)} deadline={view.turnDeadline} />
         ))}
       </div>
 
-      <TableCenter view={view} closing={closing} />
+      <TableCenter view={view} closing={c.closingPlay} />
 
       {showLog && (
-        <div className="absolute inset-x-2 top-12 z-10 max-h-56 overflow-auto rounded-xl bg-black/80 p-3 text-sm shadow-xl" role="log">
-          {log.length === 0 ? <div className="text-green-100/60">עוד אין מהלכים</div> : log.map((l, i) => <div key={i} className={i === 0 ? 'font-bold' : 'opacity-80'}>{l}</div>)}
+        <div className="row-card absolute inset-x-2 top-12 z-30 max-h-56 overflow-auto p-3 text-sm" role="log" style={{ background: 'var(--bg-1)', fontFamily: 'var(--font-he)' }}>
+          {c.log.length === 0 ? <div className="label-dim">עוד אין מהלכים</div> : c.log.map((l, i) => <div key={i} className={i === 0 ? 'font-bold' : 'opacity-70'}>{l}</div>)}
         </div>
       )}
 
-      <div className="flex flex-col gap-1 pb-2">
-        <div className="flex items-center justify-between px-4 text-sm">
-          <span className={`rounded-lg px-2 py-0.5 font-bold ${myTurn ? 'turn-glow bg-black/35' : ''}`}>
+      <div className="flex flex-col gap-1 pb-3">
+        <div className="flex items-center justify-between gap-2 px-4 text-sm" style={{ fontFamily: 'var(--font-he)' }}>
+          <span className={`flex items-center gap-2 px-2 py-0.5 font-extrabold ${myTurn ? 'turn-ring' : ''}`}>
             {me.name} (אני) · {me.cardCount} קלפים
+            {me.title && <span className="chip ghost">{TITLE_LABEL[me.title]}</span>}
           </span>
-          {myTurn && view.turnDeadline ? <TurnTimer deadline={view.turnDeadline} /> : <span className="text-green-100/60">{me.place ? `סיימת – מקום ${me.place}` : myTurn ? '' : `התור של ${view.seats.find((s) => s.id === view.turn)?.name ?? ''}`}</span>}
+          {myTurn && view.turnDeadline ? <Seconds deadline={view.turnDeadline} /> : <span className="label-dim">{me.place ? `סיימת: מקום ${me.place}` : `התור של ${turnName}`}</span>}
         </div>
-        <div className="h-5 px-4 text-center text-sm font-semibold text-yellow-200" aria-live="polite">{error ?? hint}</div>
-        <Hand hand={view.hand} selected={selected} onToggle={toggle} />
+        {myTurn && view.turnDeadline ? <div className="px-4"><TimerBar deadline={view.turnDeadline} /></div> : <div className="h-1" />}
+        <div className="min-h-5 px-4 text-center text-sm font-bold" style={{ color: 'var(--magenta)', fontFamily: 'var(--font-he)' }} aria-live="polite">{c.error ?? hint}</div>
+        <Hand hand={view.hand} selected={selected} playable={playable} onToggle={toggle} />
         <div className="flex gap-3 px-4 pt-2">
-          <button onClick={play} disabled={!myTurn || !check.ok} className="h-12 flex-1 rounded-xl bg-yellow-400 text-lg font-extrabold text-black shadow disabled:opacity-35">
-            שים
-          </button>
-          <button onClick={actions.pass} disabled={!canPass} className="h-12 w-28 rounded-xl bg-slate-200 text-lg font-bold text-slate-900 shadow disabled:opacity-35">
-            פס
-          </button>
+          <div className="flex-[2]"><NeonButton disabled={!myTurn || !check.ok} onClick={play}>שים</NeonButton></div>
+          <div className="flex-1"><NeonButton tone="magenta" disabled={!canPass} onClick={c.actions.pass}>פס</NeonButton></div>
         </div>
       </div>
 
-      {view.phase === 'finished' && results && <FinishScreen results={results} uid={view.me} isHost={isHost} onAgain={actions.again} onLobby={actions.lobby} />}
+      {view.phase === 'finished' && c.results && (
+        <FinishScreen
+          results={c.results} uid={view.me} isHost={isHost}
+          onAgain={c.actions.again} onWaiting={c.actions.backToWaiting} onExit={() => guard.go('/lobby')}
+        />
+      )}
     </div>
   );
 }

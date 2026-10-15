@@ -20,6 +20,13 @@ const server = createGameServer({
   turnMs: Number(process.env.TURN_MS ?? 30_000),
   botDelayMs: process.env.BOT_DELAY_MS ? (process.env.BOT_DELAY_MS.split(',').map(Number) as [number, number]) : undefined,
   corsOrigin: process.env.CORS_ORIGIN ?? '*',
+  // אופציונלי: זמנים (מילישניות), למשל לבדיקות מהירות
+  roomOptions: {
+    ...(process.env.EXCHANGE_MS && { exchangeMs: Number(process.env.EXCHANGE_MS) }),
+    ...(process.env.EXCHANGE_REVIEW_MS && { exchangeReviewMs: Number(process.env.EXCHANGE_REVIEW_MS) }),
+    ...(process.env.GRACE_MS && { graceMs: Number(process.env.GRACE_MS) }),
+    ...(process.env.WAIT_GRACE_MS && { waitGraceMs: Number(process.env.WAIT_GRACE_MS) }),
+  },
 });
 await server.listen(port);
 await backend.selfCheck();

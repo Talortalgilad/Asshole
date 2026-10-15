@@ -189,6 +189,7 @@
 }
 .ncard.suit-H, .ncard.suit-D { --c: var(--magenta); }
 .ncard.suit-C, .ncard.suit-S { --c: var(--cyan); }
+.ncard.xs { --w: 1.35rem; border-radius: .22rem; }
 .ncard.sm { --w: 2.6rem; }
 .ncard.lg { --w: 4.6rem; }
 .ncard.hero { --w: 9rem; }
@@ -234,4 +235,121 @@
 @media (prefers-reduced-motion: reduce) {
   .neon-bg::after, .glitch, .glitch::before, .glitch::after, .float { animation: none !important; }
   .neon-btn-wrap, .ncard { transition: none; }
+}
+
+/* ======================================================================
+   רכיבי UI משותפים (חלק ג')
+   ====================================================================== */
+
+/* פאנל עם פינות חתוכות ומסגרת ניאון אמיתית: wrapper נושא את ה-glow, ה-panel את המסגרת, ה-body את המילוי */
+.panel-wrap {
+  --c: var(--cyan);
+  --cut: 16px;
+  filter: drop-shadow(0 0 calc(4px * var(--glow)) color-mix(in srgb, var(--c) 65%, transparent));
+}
+.panel-wrap.tone-magenta { --c: var(--magenta); }
+.panel-wrap.tone-dim { --c: color-mix(in srgb, var(--cyan) 38%, var(--violet)); filter: none; }
+.panel-wrap.small { --cut: 10px; }
+.panel {
+  padding: 1.5px;
+  background: var(--c);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.panel-body {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--violet) 72%, var(--bg-1)), var(--bg-0) 85%);
+  clip-path: polygon(calc(var(--cut) - 1px) 0, 100% 0, 100% calc(100% - var(--cut) + 1px), calc(100% - var(--cut) + 1px) 100%, 0 100%, 0 calc(var(--cut) - 1px));
+  padding: 1rem;
+}
+
+/* שורת רשימה קלה (בלי filter, בשביל רשימות ארוכות) */
+.row-card {
+  border: 1px solid color-mix(in srgb, var(--cyan) 38%, transparent);
+  background: color-mix(in srgb, var(--violet) 50%, transparent);
+  border-radius: 6px;
+}
+.row-card.active { border-color: var(--cyan); box-shadow: 0 0 calc(10px * var(--glow)) color-mix(in srgb, var(--cyan) 45%, transparent); }
+
+.neon-input {
+  width: 100%;
+  background: color-mix(in srgb, var(--bg-0) 85%, var(--violet));
+  color: var(--text);
+  border: 1.5px solid color-mix(in srgb, var(--cyan) 60%, transparent);
+  border-radius: 4px;
+  padding: .8rem 1rem;
+  font: 600 1.05rem var(--font-he);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.neon-input::placeholder { color: color-mix(in srgb, var(--text-dim) 70%, transparent); }
+.neon-input:focus { border-color: var(--cyan); box-shadow: 0 0 calc(12px * var(--glow)) color-mix(in srgb, var(--cyan) 55%, transparent); }
+
+/* תגיות */
+.chip {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .12rem .5rem;
+  border-radius: 3px;
+  font: 800 .7rem var(--font-he);
+  letter-spacing: .02em;
+  line-height: 1.3;
+  color: var(--bg-0);
+  background: var(--cyan);
+}
+.chip.magenta { background: var(--magenta); }
+.chip.dim { background: color-mix(in srgb, var(--text-dim) 30%, var(--bg-1)); color: var(--text); }
+.chip.ghost { background: transparent; border: 1px solid currentColor; color: var(--cyan); }
+.chip.ghost.magenta { color: var(--magenta); }
+
+/* כותרות ומשטחים */
+.h-neon { font-family: var(--font-he); font-weight: 900; color: var(--text);
+  text-shadow: 0 0 calc(6px * var(--glow)) color-mix(in srgb, var(--cyan) 70%, transparent), 0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--cyan) 35%, transparent); }
+.label-dim { font-family: var(--font-he); color: var(--text-dim); font-size: .8rem; letter-spacing: .04em; }
+.t-cyan { color: var(--cyan); text-shadow: 0 0 calc(8px * var(--glow)) color-mix(in srgb, var(--cyan) 60%, transparent); }
+.t-magenta { color: var(--magenta); text-shadow: 0 0 calc(8px * var(--glow)) color-mix(in srgb, var(--magenta) 60%, transparent); }
+
+/* חלון אישור */
+.modal-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1.25rem; background: color-mix(in srgb, var(--bg-0) 82%, transparent); }
+
+/* סרגל עליון */
+.appbar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: .5rem; height: 3.5rem; padding: 0 .75rem;
+  background: color-mix(in srgb, var(--bg-0) 92%, var(--violet));
+  border-bottom: 1px solid color-mix(in srgb, var(--cyan) 50%, transparent);
+  box-shadow: 0 1px calc(14px * var(--glow)) color-mix(in srgb, var(--cyan) 22%, transparent); }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: 4px; border: 1px solid transparent;
+  color: var(--cyan); background: transparent; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s; }
+.icon-btn:hover, .icon-btn:focus-visible { background: color-mix(in srgb, var(--cyan) 12%, transparent); border-color: color-mix(in srgb, var(--cyan) 55%, transparent); outline: none; }
+.menu-pop { position: absolute; top: 3.2rem; inset-inline-end: .5rem; min-width: 12rem; z-index: 50; padding: .35rem;
+  background: var(--bg-1); border: 1px solid var(--cyan); border-radius: 4px; box-shadow: 0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--cyan) 35%, transparent); }
+.menu-item { display: block; width: 100%; text-align: start; padding: .7rem .8rem; border-radius: 3px; color: var(--text); font: 700 .98rem var(--font-he); background: transparent; border: 0; cursor: pointer; }
+.menu-item:hover, .menu-item:focus-visible { background: color-mix(in srgb, var(--cyan) 14%, transparent); outline: none; }
+.menu-item.danger { color: var(--magenta); }
+
+/* תור: טבעת ניאון פועמת, וטיימר כפס שמתרוקן */
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 1.5px var(--cyan), 0 0 calc(10px * var(--glow)) color-mix(in srgb, var(--cyan) 70%, transparent); }
+  50% { box-shadow: 0 0 0 2.5px var(--cyan), 0 0 calc(22px * var(--glow)) var(--cyan); }
+}
+.turn-ring { animation: ring-pulse 1.3s ease-in-out infinite; border-radius: 6px; }
+.timer-bar { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--cyan) 18%, transparent); overflow: hidden; }
+.timer-bar > i { display: block; height: 100%; background: var(--cyan); box-shadow: 0 0 calc(8px * var(--glow)) var(--cyan); transition: width .25s linear; }
+.timer-bar.low > i { background: var(--magenta); box-shadow: 0 0 calc(8px * var(--glow)) var(--magenta); }
+
+/* אירועי משחק: הבזק ניאון + טקסט מרצד (עד 0.8 שנ') */
+@keyframes flash-screen { 0% { opacity: 0; } 12% { opacity: .5; } 100% { opacity: 0; } }
+.flash-layer { position: fixed; inset: 0; z-index: 35; pointer-events: none; animation: flash-screen .8s ease-out both; }
+.flash-layer.tone-cyan { background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--cyan) 55%, transparent), transparent 65%); }
+.flash-layer.tone-magenta { background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--magenta) 55%, transparent), transparent 65%); }
+@keyframes banner-in { 0% { transform: scale(.8) translateY(8px); opacity: 0; } 15% { transform: none; opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.event-banner { position: relative; padding: .45rem 1rem; font: 900 1.15rem var(--font-he); letter-spacing: .02em; color: var(--text);
+  background: color-mix(in srgb, var(--bg-0) 88%, var(--c)); border: 1.5px solid var(--c); border-radius: 3px;
+  text-shadow: 0 0 calc(8px * var(--glow)) var(--c);
+  box-shadow: 0 0 calc(16px * var(--glow)) color-mix(in srgb, var(--c) 60%, transparent);
+  animation: banner-in 1.9s ease-out both; }
+.event-banner.tone-cyan { --c: var(--cyan); }
+.event-banner.tone-magenta { --c: var(--magenta); }
+.event-banner .glitch { display: inline-block; animation-duration: .8s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .turn-ring, .flash-layer, .event-banner { animation: none !important; }
+  .flash-layer { display: none; }
+  .timer-bar > i { transition: none; }
 }

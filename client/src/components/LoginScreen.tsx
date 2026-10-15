@@ -4,6 +4,7 @@ import { describeAuthError, withTimeout } from '../lib/authErrors';
 import { NeonButton } from './NeonButton';
 import { NeonScreen } from './NeonBackground';
 import { NeonCard } from './NeonCard';
+import { Mixed } from './ui';
 
 const GoogleG = () => (
   <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
@@ -56,7 +57,7 @@ export function LoginScreen() {
 
         <p className="neon-dim text-xs">אורחים משחקים כרגיל, אך לא מופיעים בטבלת האלופים.</p>
         {err && (
-          <p className="max-w-xs text-sm font-bold" style={{ color: 'var(--magenta)' }} dir="auto" role="alert">{err}</p>
+          <p className="max-w-xs text-sm font-bold" style={{ color: 'var(--magenta)' }} dir="auto" role="alert"><Mixed>{err}</Mixed></p>
         )}
       </main>
     </NeonScreen>

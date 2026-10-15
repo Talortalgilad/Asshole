@@ -1,20 +1,19 @@
 import type { Banner } from '../lib/game';
 
-const TONE: Record<Banner['tone'], string> = {
-  info: 'bg-slate-800/90',
-  cut: 'bg-red-600/95',
-  warn: 'bg-amber-600/95',
-  good: 'bg-emerald-600/95',
-};
-
+/** אירועי משחק: הבזק ניאון וטקסט מרצד (glitch) קצר. cut/יורדים/דילוג במג'נטה, השאר בציאן. */
 export function Banners({ banners }: { banners: Banner[] }) {
+  const last = banners[banners.length - 1];
+  const tone = (b: Banner) => (b.tone === 'cut' || b.tone === 'warn' ? 'magenta' : 'cyan');
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[38%] z-20 flex flex-col items-center gap-2" aria-live="polite">
-      {banners.map((b) => (
-        <div key={b.id} className={`anim-banner rounded-full px-4 py-2 text-base font-extrabold shadow-lg sm:text-xl ${TONE[b.tone]} ${b.tone === 'cut' ? 'anim-shake' : ''}`}>
-          {b.text}
-        </div>
-      ))}
-    </div>
+    <>
+      {last && <div key={`f${last.id}`} className={`flash-layer tone-${tone(last)}`} aria-hidden="true" />}
+      <div className="pointer-events-none absolute inset-x-0 top-[34%] z-40 flex flex-col items-center gap-2" aria-live="polite">
+        {banners.map((b) => (
+          <div key={b.id} className={`event-banner tone-${tone(b)}`}>
+            <span className="glitch" data-text={b.text}>{b.text}</span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

@@ -1,56 +1,33 @@
-import { useCallback, useState } from 'react';
-import { getSavedName, getUid, saveName } from './lib/identity';
-import { getToken, logout } from './lib/firebase';
-import { useAuth } from './lib/useAuth';
-import { LoginScreen } from './components/LoginScreen';
-import { NameScreen } from './components/NameScreen';
-import { Room } from './components/Room';
+import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { CardGallery } from './components/CardGallery';
-import { Waiting } from './components/Waiting';
+import { Shell } from './components/Shell';
+import { JoinByCodePage } from './pages/JoinByCodePage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
+import { LobbyPage } from './pages/LobbyPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { TablePage } from './pages/TablePage';
 
-// מצב פיתוח (?dev או ?name=...): uid לכל טאב, בלי Google. עובד רק כשהשרת עצמו במצב פיתוח.
-// כך אפשר לפתוח 4 טאבים ולשחק מול עצמך בלי 4 חשבונות Google.
+// route לכל מסך, כדי שכפתור "אחורה" של הדפדפן והטלפון יעבוד
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Shell />,
+    children: [
+      { index: true, element: <Navigate to="/lobby" replace /> },
+      { path: 'lobby', element: <LobbyPage /> },
+      { path: 'table/:id', element: <TablePage /> },
+      { path: 'join/:code', element: <JoinByCodePage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'leaderboard', element: <LeaderboardPage /> },
+      { path: '*', element: <Navigate to="/lobby" replace /> },
+    ],
+  },
+]);
+
 const params = new URLSearchParams(location.search);
-const DEV = params.has('dev') || params.has('name');
 
 export function App() {
   if (params.get('preview') === 'cards') return <CardGallery />; // דף כיוונון עיצוב
   if (params.get('preview') === 'crash') throw new Error('בדיקת Error Boundary (?preview=crash)');
-  return DEV ? <DevApp /> : <GoogleApp />;
+  return <RouterProvider router={router} />;
 }
-
-function DevApp() {
-  const [uid] = useState(getUid);
-  const [name, setName] = useState(() => params.get('name') || getSavedName());
-  const getAuth = useCallback(async () => ({ uid, name }), [uid, name]);
-  if (!name) return <NameScreen onSubmit={(n) => { saveName(n); setName(n); }} />;
-  return <Room getAuth={getAuth} authKey={`dev:${uid}:${name}`} onSignOut={() => {}} />;
-}
-
-function GoogleApp() {
-  const auth = useAuth(true);
-  const getAuth = useCallback(async () => ({ token: await getToken() }), []);
-  // epoch: אחרי linkWithPopup ה-uid זהה ולכן צריך לכפות חיבור מחדש עם טוקן טרי (provider=google.com)
-  const [epoch, setEpoch] = useState(0);
-  const [notice, setNotice] = useState('');
-  if (auth.status === 'loading') return <Waiting label="טוען…" timeoutCode="auth-timeout" onRetry={() => location.reload()} />;
-  if (auth.status === 'out') return <LoginScreen />;
-  return (
-    <>
-      <Room
-        getAuth={getAuth} authKey={`g:${auth.user.uid}:${epoch}`} onSignOut={() => logout()}
-        onLinked={(r) => {
-          setEpoch((e) => e + 1);
-          if (r === 'switched') setNotice('חשבון ה-Google הזה כבר קיים, אז התחברת אליו. ההתקדמות של האורח לא הועברה אליו.');
-          else setNotice('החשבון נשמר! ההתקדמות שלך מחוברת עכשיו ל-Google.');
-        }}
-      />
-      {notice && (
-        <div role="status" className="fixed inset-x-3 bottom-4 z-50 mx-auto max-w-md rounded-xl bg-black/85 p-3 text-center text-sm font-bold shadow-xl ring-1 ring-white/20" onClick={() => setNotice('')}>
-          {notice}
-        </div>
-      )}
-    </>
-  );
-}
-

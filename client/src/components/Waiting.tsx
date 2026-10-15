@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Mixed } from './ui';
+import { NeonButton } from './NeonButton';
 
 export const WAIT_DEADLINE_MS = 15_000;
 
@@ -36,20 +38,20 @@ export function Waiting({ label, timeoutCode, error, onRetry, onBack, backLabel 
 
   if (!err) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 text-lg" role="status" aria-live="polite">
-        <div className="h-9 w-9 animate-spin rounded-full border-4 border-white/25 border-t-yellow-300" />
-        {label}
+      <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-4 text-lg" role="status" aria-live="polite" style={{ fontFamily: 'var(--font-he)' }}>
+        <div className="h-10 w-10 animate-spin rounded-full" style={{ border: '3px solid color-mix(in srgb, var(--cyan) 22%, transparent)', borderTopColor: 'var(--cyan)', boxShadow: '0 0 calc(12px * var(--glow)) var(--cyan)' }} />
+        <span className="label-dim text-base">{label}</span>
       </div>
     );
   }
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center" role="alert">
-      <p className="text-xl font-bold">{err.title}</p>
-      <p className="rounded bg-black/30 px-3 py-1 text-sm" dir="ltr">{err.code}</p>
-      {err.hint && <p className="max-w-xs text-sm text-green-100/80">{err.hint}</p>}
-      <div className="flex gap-3">
-        {onRetry && <button onClick={onRetry} className="rounded-xl bg-yellow-400 px-5 py-2 font-bold text-black">נסה שוב</button>}
-        {onBack && <button onClick={onBack} className="rounded-xl bg-white/20 px-5 py-2 font-bold">{backLabel}</button>}
+    <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-4 px-6 text-center" role="alert" style={{ fontFamily: 'var(--font-he)' }}>
+      <p className="h-neon text-2xl">{err.title}</p>
+      <p className="chip ghost magenta" dir="ltr" style={{ fontSize: '.85rem' }}>{err.code}</p>
+      {err.hint && <p className="label-dim max-w-xs text-sm"><Mixed>{typeof err.hint === 'string' ? err.hint : ''}</Mixed>{typeof err.hint === 'string' ? null : err.hint}</p>}
+      <div className="flex w-full max-w-xs flex-col gap-3">
+        {onRetry && <NeonButton small onClick={onRetry}>נסה שוב</NeonButton>}
+        {onBack && <NeonButton small tone="magenta" onClick={onBack}>{backLabel}</NeonButton>}
       </div>
     </div>
   );

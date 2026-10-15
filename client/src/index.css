@@ -5,9 +5,9 @@
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: radial-gradient(ellipse at 50% 30%, #166534 0%, #14532d 55%, #052e16 100%);
-  color: #f0fdf4;
-  font-family: system-ui, -apple-system, "Segoe UI", Heebo, Arial, sans-serif;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-neon);
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
 }

@@ -1,50 +1,95 @@
-import type { Profile } from '@asshole/shared';
-import type { TableState } from '../lib/useGameClient';
-import { Avatar, GuestTag } from './ProfileScreen';
+import { useState } from 'react';
+import { useClient } from '../lib/client';
+import { Avatar, BotTag, GuestTag, Panel } from './ui';
+import { NeonButton } from './NeonButton';
 
-type Actions = { start(): void; addBot(seat: number): void; kick(seat: number): void };
+async function copy(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  }
+}
 
-export function WaitingRoom({ table, uid, me, actions, onProfile }: { table: TableState; uid: string; me: Profile; actions: Actions; onProfile: () => void }) {
+export function WaitingRoom() {
+  const c = useClient();
+  const table = c.table!;
+  const uid = c.profile!.uid;
   const host = table.hostId === uid;
   const full = table.seats.every(Boolean);
+  const link = table.inviteCode ? `${location.origin}/join/${table.inviteCode}` : '';
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    if (!link) return;
+    if (typeof navigator.share === 'function') {
+      try { await navigator.share({ title: 'פריזידנט', text: `בוא לשחק איתי: ${table.name}`, url: link }); return; } catch { /* בוטל – ממשיכים להעתקה */ }
+    }
+    setCopied(await copy(link));
+    setTimeout(() => setCopied(false), 2500);
+  };
+
   return (
-    <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-4 px-4">
-      <button onClick={onProfile} className="absolute end-3 top-3 flex items-center gap-2 rounded-full bg-black/30 py-1 pe-3 ps-1 text-sm font-bold">
-        <Avatar url={me.photoURL} name={me.username} size={32} />{me.username}
-      </button>
-      <h1 className="text-center text-3xl font-extrabold">חדר המתנה</h1>
-      <p className="text-center text-green-100/80">{table.seats.filter(Boolean).length} / {table.needed} שחקנים</p>
-      <ul className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4 px-4 py-4">
+      <div className="text-center">
+        <h2 className="h-neon text-2xl">{table.name}</h2>
+        <p className="label-dim">{table.seats.filter(Boolean).length} / {table.needed} שחקנים · {table.isPrivate ? 'שולחן פרטי' : 'שולחן ציבורי'}</p>
+      </div>
+
+      {table.inviteCode && (
+        <Panel tone="magenta" small>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="label-dim">קוד הזמנה</div>
+              <div dir="ltr" className="t-magenta text-2xl font-black" style={{ letterSpacing: '.22em' }}>{table.inviteCode}</div>
+            </div>
+            <div className="w-40"><NeonButton tone="magenta" small onClick={share}>{copied ? '✓ הועתק' : 'שתף קישור'}</NeonButton></div>
+          </div>
+        </Panel>
+      )}
+
+      <ul className="flex flex-col gap-2.5">
         {table.seats.map((s, i) => (
-          <li key={i} className={`flex min-h-14 items-center justify-between gap-2 rounded-xl px-4 py-2 ${s ? 'bg-black/30' : 'border border-dashed border-white/30'}`}>
+          <li key={i} className={`row-card flex min-h-[3.5rem] items-center gap-3 px-3 py-2 ${s?.uid === uid ? 'active' : ''}`} style={s ? undefined : { borderStyle: 'dashed', opacity: 0.9 }}>
             {s ? (
               <>
-                <span className="flex items-center gap-2 font-bold">
-                  {!s.isBot && <Avatar url={s.photoURL} name={s.name} size={28} />}
-                  {s.name}{s.isGuest && <GuestTag />}{s.uid === table.hostId ? ' 👑' : ''}{s.uid === uid ? ' (אני)' : ''}
+                <Avatar url={s.isBot ? undefined : s.photoURL} name={s.name} size={36} />
+                <span className="min-w-0 flex-1 truncate font-extrabold" style={{ fontFamily: 'var(--font-he)' }}>
+                  {s.name}{s.uid === uid ? ' (אני)' : ''}
                 </span>
+                {s.uid === table.hostId && <span className="chip" title="מארח">👑 מארח</span>}
+                {s.isGuest && <GuestTag />}
+                {s.isBot && !s.name.includes('🤖') && <BotTag />}
                 {host && s.uid !== uid && (
-                  <button onClick={() => actions.kick(i)} className="rounded-lg bg-red-700/80 px-3 py-1.5 text-sm font-bold">הוצא</button>
+                  <button className="chip magenta" style={{ cursor: 'pointer', padding: '.35rem .7rem' }} onClick={() => c.actions.kick(i)} aria-label={`הוצא את ${s.name}`}>הוצא</button>
                 )}
               </>
             ) : (
               <>
-                <span className="text-green-100/60">מושב ריק</span>
+                <span className="label-dim flex-1">מושב ריק</span>
                 {host && (
-                  <button onClick={() => actions.addBot(i)} className="rounded-lg bg-white/90 px-3 py-1.5 text-sm font-bold text-black">🤖 הוסף מחשב</button>
+                  <div className="w-44"><NeonButton small onClick={() => c.actions.addBot(i)}>🤖 הוסף מחשב</NeonButton></div>
                 )}
               </>
             )}
           </li>
         ))}
       </ul>
+
       {host ? (
-        <button disabled={!full} onClick={actions.start} className="rounded-xl bg-yellow-400 py-3 text-lg font-extrabold text-black disabled:opacity-40">
-          {full ? 'התחל משחק' : 'ממתינים לשחקנים…'}
-        </button>
+        <NeonButton disabled={!full} onClick={c.actions.start}>{full ? 'התחל משחק' : 'ממתינים לשחקנים…'}</NeonButton>
       ) : (
-        <p className="text-center text-green-100/80">ממתינים שהמארח יתחיל…</p>
+        <p className="label-dim text-center">ממתינים שהמארח יתחיל…</p>
       )}
+      {c.error && <p role="alert" className="t-magenta text-center text-sm font-bold">{c.error}</p>}
     </div>
   );
 }

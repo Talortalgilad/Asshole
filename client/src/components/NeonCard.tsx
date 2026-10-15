@@ -6,7 +6,7 @@ type Props = {
   card?: Pick<Card, 'rank' | 'suit'>;
   rank?: Rank;
   suit?: Suit;
-  size?: 'sm' | 'md' | 'lg' | 'hero';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'hero';
   selected?: boolean;
   /** קלף שלא חוקי לשחק כרגע: מעומעם (אבל אפשר לסמן אותו) */
   dim?: boolean;

@@ -1,34 +1,38 @@
-import type { SeatView } from '@asshole/shared';
-import { CardBack } from './CardView';
-import { TurnTimer } from './TurnTimer';
-import { GuestTag } from './ProfileScreen';
+import { TITLE_LABEL, type SeatView } from '@asshole/shared';
+import { BotTag, GuestTag, Seconds, TimerBar } from './ui';
+import { NeonCard } from './NeonCard';
 
-type Props = { seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null; flash?: boolean };
+type Props = { seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null };
 
-export function Seat({ seat, isTurn, passed, deadline, flash }: Props) {
+export function Seat({ seat, isTurn, passed, deadline }: Props) {
   const out = seat.place !== null;
   return (
-    <div
-      className={`relative flex min-w-[4.5rem] max-w-[9rem] flex-1 flex-col items-center gap-1 rounded-xl bg-black/25 px-2 py-2 text-center transition-opacity ${
-        isTurn ? 'turn-glow bg-black/35' : ''
-      } ${seat.connected ? '' : 'opacity-50'} ${out ? 'opacity-70' : ''} ${flash ? 'anim-flash' : ''}`}
-    >
-      <div className="flex max-w-full items-center justify-center gap-1 text-sm font-bold sm:text-base"><span className="truncate">{seat.name}</span>{seat.isGuest && <GuestTag />}</div>
+    <div className={`row-card relative flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-2 text-center ${isTurn ? 'turn-ring' : ''}`}
+      style={{ opacity: seat.connected ? (out ? 0.7 : 1) : 0.5, background: isTurn ? 'color-mix(in srgb, var(--cyan) 8%, var(--bg-1))' : undefined }}>
+      <div className="flex max-w-full items-center justify-center gap-1" style={{ fontFamily: 'var(--font-he)' }}>
+        <span className="truncate text-sm font-extrabold">{seat.name}</span>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-1">
+        {seat.title && <span className="chip ghost">{TITLE_LABEL[seat.title]}</span>}
+        {seat.isGuest && <GuestTag />}
+        {seat.isBot && !seat.name.includes('🤖') && <BotTag />}
+      </div>
       {out ? (
-        <div className="text-sm font-bold text-yellow-300">מקום {seat.place}</div>
+        <div className="t-cyan text-sm font-extrabold">מקום {seat.place}</div>
       ) : (
-        <div className="flex items-center gap-1" aria-label={`${seat.cardCount} קלפים`}>
+        <div className="flex items-center gap-1.5" aria-label={`${seat.cardCount} קלפים`}>
           <div dir="ltr" className="flex">
-            {Array.from({ length: Math.min(seat.cardCount, 4) }, (_, i) => <CardBack key={i} className={i ? '-ms-3' : ''} />)}
+            {Array.from({ length: Math.min(seat.cardCount, 3) }, (_, i) => <NeonCard key={i} faceDown size="xs" className={i ? '-ms-3' : ''} />)}
           </div>
-          <span className="text-lg font-extrabold tabular-nums">{seat.cardCount}</span>
+          <span className="text-lg font-black tabular-nums">{seat.cardCount}</span>
         </div>
       )}
-      <div className="flex h-5 items-center gap-1 text-xs">
-        {!seat.connected && <span className="rounded bg-red-900/70 px-1">מנותק</span>}
-        {passed && !out && <span className="rounded bg-slate-900/60 px-1.5">פס</span>}
-        {isTurn && deadline && <TurnTimer deadline={deadline} />}
+      <div className="flex h-5 items-center justify-center gap-1 text-xs" style={{ fontFamily: 'var(--font-he)' }}>
+        {!seat.connected && <span className="chip magenta">מנותק</span>}
+        {passed && !out && <span className="chip dim">פס</span>}
+        {isTurn && deadline && <Seconds deadline={deadline} />}
       </div>
+      {isTurn && deadline && <div className="absolute inset-x-1.5 bottom-0.5"><TimerBar deadline={deadline} /></div>}
     </div>
   );
 }
