@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { loginWithGoogle } from '../lib/firebase';
+import { describeAuthError, withTimeout } from '../lib/authErrors';
 
 export function LoginScreen() {
   const [busy, setBusy] = useState(false);
@@ -12,7 +13,12 @@ export function LoginScreen() {
         disabled={busy}
         onClick={async () => {
           setBusy(true); setErr('');
-          try { await loginWithGoogle(); } catch { setErr('ההתחברות נכשלה, נסה שוב'); }
+          try {
+            await withTimeout(loginWithGoogle(), 15_000);
+          } catch (e) {
+            console.error('[login] failed', e);
+            setErr(describeAuthError(e));
+          }
           setBusy(false);
         }}
         className="flex w-full items-center justify-center gap-3 rounded-xl bg-white py-3 text-lg font-bold text-slate-800 shadow disabled:opacity-60"
@@ -25,7 +31,7 @@ export function LoginScreen() {
         </svg>
         {busy ? 'מתחבר…' : 'התחבר עם Google'}
       </button>
-      {err && <p className="text-red-300">{err}</p>}
+      {err && <p className="text-red-300" dir="auto" role="alert">{err}</p>}
     </div>
   );
 }

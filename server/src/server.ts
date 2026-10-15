@@ -44,9 +44,11 @@ export type ServerOptions = {
 /** שרת עם חדר אחד, בלי התחברות: הקליינט שולח { uid, name } ב-handshake. */
 export function createGameServer(opts: ServerOptions = {}) {
   const http: HttpServer = createServer((req, res) => {
+    // חלון ה-popup של Google מדבר עם הדף דרך window.opener. COOP של same-origin חוסם את זה.
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     if (req.url === '/health') {
       res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()) }));
+      res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), auth: opts.verifier && !opts.verifier.dev ? 'firebase' : 'dev' }));
     } else if (req.url === '/debug') {
       res.setHeader('content-type', 'text/html; charset=utf-8');
       res.end(readFileSync(join(here, '../public/index.html')));
@@ -82,7 +84,9 @@ export function createGameServer(opts: ServerOptions = {}) {
         ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null } as unknown as Profile)
         : await store.get(id.uid);
       next();
-    } catch {
+    } catch (e) {
+      const x = e as { code?: string; message?: string };
+      console.warn(`[auth] חיבור נדחה: ${x.code ?? ''} ${x.message ?? e}`.trim());
       next(new Error('unauthorized'));
     }
   });

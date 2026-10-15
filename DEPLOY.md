@@ -29,3 +29,17 @@
 ## בדיקה מקומית עם 4 טאבים
 - `npm run dev` + `npm run dev:client` ואז `http://localhost:5173/?name=דנה` (פעם שנייה: `?name=יוסי` וכו').
 - כשיש `FIREBASE_SERVICE_ACCOUNT` מקומי, מצב `?name=` נחסם – משתמשים ב-Google.
+
+## אבחון: ההתחברות עם Google לא עובדת
+1. **פותחים `https://<הדומיין>/health`** – צריך להחזיר `"auth":"firebase"`. אם כתוב `"dev"` – `FIREBASE_SERVICE_ACCOUNT` לא הוגדר ב-Railway (או שהדיפלוי לא נקלט).
+2. **לוג Railway בעליית השרת** (Deployments → View logs):
+   - `✅ [firebase] Admin אותחל. project=… service-account=…` – הסוד נקרא ופוענח.
+   - `✅ Auth Admin פועל` / `✅ Firestore נגיש` – ההרשאות תקינות.
+   - `❌ Firestore נכשל … NOT_FOUND` – לא נוצר Firestore Database בפרויקט.
+   - `❌ Auth Admin נכשל … invalid_grant` – המפתח בוטל/לא שייך לפרויקט. יוצרים מפתח חדש.
+   - `⚠️ project_id … שונה` – ה-service account מפרויקט אחר מ-`asshole-720d9`.
+   - `❌ FIREBASE_SERVICE_ACCOUNT … אינו JSON תקין` – השרת מסרב לעלות (בכוונה). נסו base64: `base64 -w0 key.json`.
+   - `[auth] חיבור נדחה: …` – טוקן נדחה, והסיבה כתובה (למשל `incorrect 'aud' claim` = פרויקט לא תואם).
+3. **הדפדפן:** הכפתור מציג עכשיו קוד שגיאה (או `timeout` אחרי 15 שניות) במקום להיתקע. אם נדחה אחרי ההתחברות מופיע מסך "השרת דחה את ההתחברות".
+4. **Headers:** השרת שולח `Cross-Origin-Opener-Policy: same-origin-allow-popups` (נדרש לחלון הקופץ). ב-DevTools → Network → המסמך הראשי, ודאו שזה ה-header שמגיע (שום שכבה לפני השרת לא אמורה לדרוס אותו ל-`same-origin`).
+5. אם הקוד הוא `auth/unauthorized-domain` – מוסיפים את הדומיין ב-Authentication → Settings → Authorized domains.

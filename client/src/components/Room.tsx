@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { suggestUsername } from '@asshole/shared';
 import { type AuthPayload, useGameClient } from '../lib/useGameClient';
 import { GameScreen } from './GameScreen';
@@ -12,7 +12,28 @@ export function Room({ getAuth, authKey, onSignOut }: Props) {
   const g = useGameClient(getAuth, authKey);
   const [showProfile, setShowProfile] = useState(false);
 
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (g.profile) return setSlow(false);
+    const t = setTimeout(() => setSlow(true), 15_000);
+    return () => clearTimeout(t);
+  }, [g.profile]);
+
   if (!g.profile) {
+    const rejected = g.connectError === 'unauthorized';
+    if (rejected || slow) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+          <p className="text-xl font-bold">{rejected ? 'השרת דחה את ההתחברות' : 'השרת לא ענה'}</p>
+          <p className="text-sm text-green-100/80" dir="ltr">{g.connectError ?? 'timeout (15s)'}</p>
+          <p className="text-sm text-green-100/70">{rejected ? 'בדוק שהשרת מוגדר עם FIREBASE_SERVICE_ACCOUNT של אותו פרויקט Firebase.' : 'בדוק חיבור לאינטרנט ושהשרת פעיל.'}</p>
+          <div className="flex gap-3">
+            <button onClick={() => location.reload()} className="rounded-xl bg-yellow-400 px-5 py-2 font-bold text-black">נסה שוב</button>
+            <button onClick={onSignOut} className="rounded-xl bg-white/20 px-5 py-2 font-bold">התנתק</button>
+          </div>
+        </div>
+      );
+    }
     return <div className="flex h-full items-center justify-center text-lg">{g.connected ? 'טוען…' : 'מתחבר לשרת…'}</div>;
   }
   const uid = g.profile.uid;

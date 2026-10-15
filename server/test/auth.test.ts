@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { MemoryUserStore } from '../src/users';
-import { parseServiceAccount, tokenVerifier } from '../src/auth';
+import { createBackendFromEnv, devVerifier, parseServiceAccount, tokenVerifier } from '../src/auth';
 import { createGameServer } from '../src/server';
 
 let server: ReturnType<typeof createGameServer>;
@@ -124,5 +124,47 @@ describe('עזרי auth', () => {
     const json = JSON.stringify({ project_id: 'p', private_key: 'a\\nb' });
     expect(parseServiceAccount(json).private_key).toBe('a\nb');
     expect(parseServiceAccount(Buffer.from(json).toString('base64')).project_id).toBe('p');
+  });
+});
+
+describe('הגדרות פרודקשן', () => {
+  it('שולח Cross-Origin-Opener-Policy: same-origin-allow-popups על כל התשובות (חלון Google)', async () => {
+    const { port } = await start();
+    for (const path of ['/', '/health', '/debug', '/assets/x.js', '/nope']) {
+      const res = await fetch(`http://localhost:${port}${path}`);
+      expect(res.headers.get('cross-origin-opener-policy'), path).toBe('same-origin-allow-popups');
+    }
+  });
+
+  it('/health מדווח איזה מצב אימות פעיל', async () => {
+    const { port } = await start();
+    expect((await (await fetch(`http://localhost:${port}/health`)).json()).auth).toBe('firebase');
+    await server.close();
+    server = createGameServer({ verifier: devVerifier() });
+    const p2 = await server.listen(0);
+    expect((await (await fetch(`http://localhost:${p2}/health`)).json()).auth).toBe('dev');
+  });
+
+  it('FIREBASE_SERVICE_ACCOUNT פגום → שגיאה ברורה, לא נפילה שקטה למצב פיתוח', () => {
+    expect(() => createBackendFromEnv({ FIREBASE_SERVICE_ACCOUNT: 'לא json' } as never)).toThrow(/אינו JSON תקין/);
+    expect(() => createBackendFromEnv({ FIREBASE_SERVICE_ACCOUNT: '{"project_id":"x"}' } as never)).toThrow(/חסרים שדות: client_email, private_key/);
+  });
+
+  it('בלי FIREBASE_SERVICE_ACCOUNT → מצב פיתוח עם אזהרה', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const b = createBackendFromEnv({} as never);
+    expect(b.verifier.dev).toBe(true);
+    expect(b.db).toBeNull();
+    expect(warn.mock.calls[0][0]).toContain('FIREBASE_SERVICE_ACCOUNT');
+    warn.mockRestore();
+  });
+
+  it('חיבור נדחה נרשם בלוג עם הסיבה', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { port } = await start();
+    const bad = client(port, 'garbage');
+    await until(() => bad.connectError !== null);
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('[auth] חיבור נדחה') && String(c[0]).includes('invalid token'))).toBe(true);
+    warn.mockRestore();
   });
 });

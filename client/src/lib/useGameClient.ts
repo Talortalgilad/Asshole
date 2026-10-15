@@ -34,6 +34,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
   const [kicked, setKicked] = useState(false);
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const [closingPlay, setClosingPlay] = useState<CenterPlay>(null);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
     let closeTimer: ReturnType<typeof setTimeout>;
     const addLog = (line: string | null) => line && setLog((l) => [line, ...l].slice(0, 60));
 
-    socket.on('connect', () => setConnected(true));
+    socket.on('connect', () => { setConnected(true); setConnectError(null); });
     socket.on('profile:state', (p: ProfileState) => {
       setProfile(p);
       setProfileError(null);
@@ -52,7 +53,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
     });
     socket.on('profile:error', (e: { message: string }) => setProfileError(e.message));
     socket.on('disconnect', () => setConnected(false));
-    socket.on('connect_error', () => setConnected(false));
+    socket.on('connect_error', (e: Error) => { setConnected(false); setConnectError(e.message); });
     socket.on('table:state', (t: TableState) => {
       setTable(t);
       if (t.phase === 'waiting') { setView(null); viewRef.current = null; setResults(null); setLog([]); }
@@ -97,7 +98,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
   const emit = useCallback((event: string, payload?: unknown) => socketRef.current?.emit(event, payload), []);
 
   return {
-    connected, table, view, results, banners, log, error, kicked, closingPlay, profile, profileError,
+    connected, table, view, results, banners, log, error, kicked, closingPlay, profile, profileError, connectError,
     actions: {
       play: (cardIds: string[]) => emit('game:play', { cardIds }),
       pass: () => emit('game:pass'),
