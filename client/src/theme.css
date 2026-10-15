@@ -198,8 +198,8 @@
 .ncard .corner { position: absolute; display: flex; flex-direction: column; align-items: center; gap: calc(var(--w) * .01); }
 .ncard .corner.tl { top: calc(var(--w) * .07); left: calc(var(--w) * .09); }
 .ncard .corner.br { bottom: calc(var(--w) * .07); right: calc(var(--w) * .09); transform: rotate(180deg); }
-.ncard .rank { font-size: calc(var(--w) * .27); letter-spacing: -.04em; text-shadow: 0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 80%, transparent); }
-.ncard .rank.ten { font-size: calc(var(--w) * .23); letter-spacing: -.1em; }
+.ncard .rank { font-family: var(--font-he); font-weight: 800; font-size: calc(var(--w) * .3); letter-spacing: -.02em; text-shadow: 0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 80%, transparent); }
+.ncard .rank.ten { font-size: calc(var(--w) * .26); letter-spacing: -.08em; }
 .ncard .pip-s { font-size: calc(var(--w) * .2); font-family: var(--font-he); }
 .ncard .pip {
   position: absolute; inset: 0;
