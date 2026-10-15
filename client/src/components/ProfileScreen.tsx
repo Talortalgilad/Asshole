@@ -57,7 +57,7 @@ export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLink
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <RankChip rank={rankIndex(s.points)} />
-              <span className="t-cyan text-2xl font-black tabular-nums">{s.points}<span className="label-dim text-sm"> נק'</span></span>
+              <span className="t-cyan text-2xl font-black tabular-nums"><bdi style={{ fontFamily: 'var(--font-he)' }}>{s.points}</bdi><span className="label-dim text-sm"> נק'</span></span>
             </div>
             <RankProgress points={s.points} />
           </div>
@@ -69,7 +69,7 @@ export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLink
           {rows.map(([k, v]) => (
             <Panel key={k} tone="dim" small bodyClassName="!p-3">
               <dt className="label-dim text-center">{k}</dt>
-              <dd className="t-cyan text-center text-2xl font-black tabular-nums">{v ?? 0}</dd>
+              <dd className="t-cyan text-center text-2xl font-black tabular-nums"><bdi style={{ fontFamily: 'var(--font-he)' }}>{v ?? 0}</bdi></dd>
             </Panel>
           ))}
         </dl>

@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
-import { rankIndex, type Profile } from '@asshole/shared';
+import { DEFAULT_DECK, isDeckId, isDeckUnlocked, rankIndex, type Profile } from '@asshole/shared';
 import { devVerifier, type Verifier } from './auth';
 import { MemoryUserStore, type UserStore } from './users';
 import type { RoomOptions } from './room';
@@ -126,7 +126,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       socket.data.identity = id;
       // במצב פיתוח אין שלב שם משתמש: השם מגיע מהקליינט
       socket.data.profile = verifier.dev && !opts.devScoring
-        ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null, isGuest: false } as unknown as Profile)
+        ? ({ uid: id.uid, username: id.name, photoURL: '', stats: null, isGuest: false, deck: null } as unknown as Profile)
         : verifier.dev
           ? ((await store.get(id.uid)) ?? (await store.setUsername(id.uid, id.name, '', id.isGuest).then((r) => (r.ok ? r.profile : null))))
           : await store.get(id.uid);
@@ -174,7 +174,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     {
       const t = joinedTable();
       const p = profileOf();
-      if (t && p && !t.join(uid, p.username, socket.id, p.photoURL, p.isGuest, p.stats?.points ?? 0)) {
+      if (t && p && !t.join(uid, p.username, socket.id, p.photoURL, p.isGuest, p.stats?.points ?? 0, p.deck ?? DEFAULT_DECK)) {
         socket.emit('table:joined', { tableId: t.tableId, inviteCode: t.inviteCode });
       }
     }
@@ -207,6 +207,28 @@ export function createGameServer(opts: ServerOptions = {}) {
       }
     });
 
+    socket.on('deck:set', async (p?: { deck?: unknown }) => {
+      const deck = p?.deck;
+      const prof = profileOf();
+      if (!isDeckId(deck) || !prof) return void socket.emit('deck:error', { code: 'bad_deck', message: 'חבילה לא תקינה' });
+      try {
+        // מצב פיתוח בלי store: הכול פתוח (לצפייה בעיצובים), נשמר רק בחיבור הזה
+        const fresh = usesStore ? await store.get(uid) : prof;
+        const points = fresh?.stats?.points ?? 0;
+        if (usesStore && !isDeckUnlocked(deck, points)) {
+          return void socket.emit('deck:error', { code: 'locked', message: 'החבילה עוד נעולה. צריך עוד נקודות.' });
+        }
+        if (usesStore) await store.setDeck(uid, deck);
+        socket.data.profile = { ...(fresh ?? prof), deck } as Profile;
+        sendProfile();
+        manager.tableOf(uid)?.setDeck(uid, deck);
+      } catch (e) {
+        const x = e as { code?: string | number; message?: string };
+        console.error(`[db] שמירת חבילה נכשלה: ${x.code ?? ''} ${x.message ?? e}`.trim());
+        socket.emit('deck:error', { code: 'server_error', message: `שגיאת שרת בשמירה (${x.code ?? 'db'})` });
+      }
+    });
+
     // ---------- לובי ----------
     socket.on('lobby:join', () => {
       socket.join('lobby');
@@ -225,7 +247,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       const room = manager.create({
         maxPlayers, isPrivate: p?.isPrivate === true, name: rawName || `השולחן של ${prof.username}`,
       });
-      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest, prof.stats?.points ?? 0);
+      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest, prof.stats?.points ?? 0, prof.deck ?? DEFAULT_DECK);
       if (err) return joinFailed(err, 'closed');
       socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
     });
@@ -242,7 +264,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       if (cur && cur !== room) {
         return void socket.emit('game:error', { code: 'already_in_table', tableId: cur.tableId, message: 'אתה כבר יושב בשולחן אחר. צא ממנו קודם.' });
       }
-      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest, prof.stats?.points ?? 0);
+      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest, prof.stats?.points ?? 0, prof.deck ?? DEFAULT_DECK);
       if (err) return joinFailed(err, room.isClosed ? 'closed' : room.phase === 'waiting' ? 'full' : 'started');
       socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
     });

@@ -1,7 +1,7 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import {
-  EMPTY_STATS, rankIndex, sortLeaderboard, validateUsername,
-  type GameOutcome, type LeaderboardRow, type LeaderboardState, type Profile, type ScoreRow, type Title, type UserStats,
+  EMPTY_STATS, isDeckId, rankIndex, sortLeaderboard, validateUsername,
+  type DeckId, type GameOutcome, type LeaderboardRow, type LeaderboardState, type Profile, type ScoreRow, type Title, type UserStats,
 } from '@asshole/shared';
 
 export type SetUsernameResult =
@@ -43,6 +43,8 @@ export interface UserStore {
    * אורח (isGuest): הכינוי לא נכנס ל-usernames ולכן לא תופס שם ואינו ייחודי.
    */
   setUsername(uid: string, username: string, photoURL: string, isGuest?: boolean): Promise<SetUsernameResult>;
+  /** בחירת חבילת קלפים (האימות שהיא פתוחה נעשה לפני הקריאה) */
+  setDeck(uid: string, deck: DeckId): Promise<void>;
   /** שומר ניקוד משחק (סעיף 12/14) ומחזיר את התוצאה לכל שחקן אנושי */
   recordGame(g: GameRecord): Promise<Record<string, GameOutcome>>;
   /** טבלת אלופים: 50 הראשונים, ושורה שלי (גם אם מחוץ ל-50). אורחים לא מופיעים. */
@@ -57,6 +59,11 @@ export class MemoryUserStore implements UserStore {
   private names = new Map<string, string>(); // usernameLower -> uid (רק משתמשי Google)
   private monthly = new Map<string, Map<string, LeaderboardRow>>();
   readonly games: GameRecord[] = [];
+
+  async setDeck(uid: string, deck: DeckId) {
+    const p = this.users.get(uid);
+    if (p) p.deck = deck;
+  }
 
   async recordGame(g: GameRecord): Promise<Record<string, GameOutcome>> {
     const out: Record<string, GameOutcome> = {};
@@ -98,7 +105,7 @@ export class MemoryUserStore implements UserStore {
     const prev = this.users.get(uid);
     const stats = prev?.stats ?? { ...EMPTY_STATS };
     if (isGuest) {
-      const profile: Profile = { uid, username: v.value, photoURL, stats, isGuest: true };
+      const profile: Profile = { uid, username: v.value, photoURL, stats, isGuest: true, deck: prev?.deck ?? null };
       this.users.set(uid, profile);
       return { ok: true, profile };
     }
@@ -107,7 +114,7 @@ export class MemoryUserStore implements UserStore {
     if (owner && owner !== uid) return TAKEN;
     if (prev && !prev.isGuest) this.names.delete(prev.username.toLowerCase());
     this.names.set(lower, uid);
-    const profile: Profile = { uid, username: v.value, photoURL, stats, isGuest: false };
+    const profile: Profile = { uid, username: v.value, photoURL, stats, isGuest: false, deck: prev?.deck ?? null };
     this.users.set(uid, profile);
     return { ok: true, profile };
   }
@@ -123,7 +130,7 @@ export class FirestoreUserStore implements UserStore {
     const d = snap.data()!;
     return {
       uid, username: d.username, photoURL: d.photoURL ?? '', isGuest: d.isGuest === true,
-      stats: { ...EMPTY_STATS, ...d.stats },
+      stats: { ...EMPTY_STATS, ...d.stats }, deck: isDeckId(d.deck) ? d.deck : null,
     };
   }
 
@@ -144,7 +151,7 @@ export class FirestoreUserStore implements UserStore {
         const fields = { username: v.value, photoURL, isGuest: true };
         if (prev) tx.update(userRef, fields);
         else tx.set(userRef, { ...fields, createdAt: FieldValue.serverTimestamp(), stats: { ...EMPTY_STATS } });
-        return { ok: true, profile: { uid, username: v.value, photoURL, stats, isGuest: true } };
+        return { ok: true, profile: { uid, username: v.value, photoURL, stats, isGuest: true, deck: isDeckId(prev?.deck) ? prev!.deck : null } };
       }
 
       if (nameSnap!.exists && nameSnap!.data()!.uid !== uid) return TAKEN;
@@ -161,8 +168,12 @@ export class FirestoreUserStore implements UserStore {
           uid, username: v.value, photoURL, points: stats.points, games: stats.games, president: stats.president, asshole: stats.asshole,
         });
       }
-      return { ok: true, profile: { uid, username: v.value, photoURL, stats, isGuest: false } };
+      return { ok: true, profile: { uid, username: v.value, photoURL, stats, isGuest: false, deck: isDeckId(prev?.deck) ? prev!.deck : null } };
     });
+  }
+
+  async setDeck(uid: string, deck: DeckId) {
+    await this.db.doc(`users/${uid}`).update({ deck });
   }
 
   async recordGame(g: GameRecord): Promise<Record<string, GameOutcome>> {

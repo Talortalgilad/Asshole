@@ -1,7 +1,7 @@
 import {
   applyAutoExchange, applyChoices, applyPass, applyPlay, autoMove, chooseBotAction, chooseBotExchange, computeExchange,
-  deal, lowestCards, rankIndex, scoreGame, sortHand, startGame, titlesForOrder, viewFor,
-  type Card, type ExchangePlan, type ExchangeView, type GameEvent, type GameState, type SeatInfo, type Title,
+  deal, lowestCards, rankIndex, scoreGame, DEFAULT_DECK, sortHand, startGame, titlesForOrder, viewFor,
+  type Card, type DeckId, type ExchangePlan, type ExchangeView, type GameEvent, type GameState, type SeatInfo, type Title,
 } from '@asshole/shared';
 
 import type { GameOutcome, GameRecord } from './users';
@@ -41,6 +41,7 @@ type Member = {
   uid: string; name: string; isBot: boolean; sockets: Set<string>; photoURL?: string; isGuest?: boolean;
   /** סך נקודות (לדרגה שמוצגת ליד השם) */
   points?: number;
+  deck?: DeckId;
   /** שחקן אנושי שיצא/נותק, ובוט ממשיך במושב שלו */
   replaced?: boolean;
 };
@@ -123,7 +124,7 @@ export class GameRoom {
   // ---------- חדר המתנה ----------
 
   /** @returns הודעת שגיאה, או null אם הצליח */
-  join(uid: string, name: string, socketId: string, photoURL = '', isGuest = false, points = 0): string | null {
+  join(uid: string, name: string, socketId: string, photoURL = '', isGuest = false, points = 0, deck: DeckId = DEFAULT_DECK): string | null {
     if (this.closed) return 'השולחן נסגר';
     let m = this.members.get(uid);
     if (m?.replaced) return 'הוחלפת בבוט במשחק הזה';
@@ -131,7 +132,7 @@ export class GameRoom {
       if (this.state || this.ex) return 'המשחק כבר התחיל';
       const seat = this.seats.indexOf(null);
       if (seat < 0) return 'השולחן מלא';
-      m = { uid, name, isBot: false, sockets: new Set(), photoURL, isGuest, points };
+      m = { uid, name, isBot: false, sockets: new Set(), photoURL, isGuest, points, deck };
       this.members.set(uid, m);
       this.seats[seat] = uid;
     }
@@ -139,6 +140,7 @@ export class GameRoom {
     m.photoURL = photoURL || m.photoURL;
     m.isGuest = isGuest;
     m.points = points;
+    m.deck = deck;
     m.sockets.add(socketId);
     this.clearGrace(uid); // חזר בתוך זמן החסד
     if (!this.hostId || !this.members.has(this.hostId) || this.members.get(this.hostId)!.isBot) this.hostId = uid;
@@ -154,6 +156,14 @@ export class GameRoom {
     m.name = name;
     m.photoURL = photoURL || m.photoURL;
     m.isGuest = isGuest;
+    this.publish();
+  }
+
+  /** החלפת חבילת קלפים (נראית לכולם בשולחן) */
+  setDeck(uid: string, deck: DeckId) {
+    const m = this.members.get(uid);
+    if (!m || m.isBot) return;
+    m.deck = deck;
     this.publish();
   }
 
@@ -365,7 +375,7 @@ export class GameRoom {
 
   private seatInfo(): Record<string, SeatInfo> {
     return Object.fromEntries(
-      [...this.members].map(([uid, m]) => [uid, { name: this.displayName(m), connected: m.isBot || m.sockets.size > 0, isBot: m.isBot, isGuest: !!m.isGuest, points: m.replaced ? undefined : m.points ?? 0 }]),
+      [...this.members].map(([uid, m]) => [uid, { name: this.displayName(m), connected: m.isBot || m.sockets.size > 0, isBot: m.isBot, isGuest: !!m.isGuest, points: m.replaced ? undefined : m.points ?? 0, deck: m.deck ?? DEFAULT_DECK }]),
     );
   }
 
@@ -627,7 +637,7 @@ export class GameRoom {
       hostId: this.hostId,
       seats: this.seats.map((uid) => {
         const m = uid ? this.members.get(uid) : null;
-        return m ? { uid: m.uid, name: this.displayName(m), isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '', isGuest: !!m.isGuest, rank: m.isBot ? null : rankIndex(m.points ?? 0) } : null;
+        return m ? { uid: m.uid, name: this.displayName(m), isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '', isGuest: !!m.isGuest, rank: m.isBot ? null : rankIndex(m.points ?? 0), deck: m.deck ?? DEFAULT_DECK } : null;
       }),
     });
     if (this.ex) this.publishExchange();

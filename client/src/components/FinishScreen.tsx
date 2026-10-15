@@ -27,9 +27,9 @@ function Scoring({ outcome, isGuest }: { outcome: GameOutcome; isGuest: boolean 
   return (
     <div className="flex flex-col items-center gap-1.5 text-center" role="status" style={{ fontFamily: 'var(--font-he)' }}>
       <div className={`text-2xl font-black tabular-nums ${outcome.points >= 0 ? 't-cyan' : 't-magenta'}`}>
-        {outcome.points > 0 ? '+' : ''}{outcome.points} נקודות
+        <bdi style={{ fontFamily: 'var(--font-he)' }}>{outcome.points > 0 ? '+' : ''}{outcome.points}</bdi> נקודות
       </div>
-      {outcome.stats && <div className="label-dim">סך הכל {outcome.stats.points} · {outcome.stats.games} משחקים</div>}
+      {outcome.stats && <div className="label-dim">סך הכל <bdi>{outcome.stats.points}</bdi> · {outcome.stats.games} משחקים</div>}
       {up && r && <div className="t-cyan font-extrabold">🎉 עלית לדרגת {r.label}!</div>}
       {down && r && <div className="label-dim">ירדת לדרגת {r.label}</div>}
       {isGuest && <div className="label-dim text-xs">ניקוד אישי (אורח). לא מופיע בטבלת האלופים.</div>}

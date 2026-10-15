@@ -8,7 +8,10 @@ export const EMPTY_STATS: UserStats = {
 };
 
 /** מה שהקליינט מקבל על המשתמש שלו */
-export type Profile = { uid: string; username: string; photoURL: string; stats: UserStats; isGuest: boolean };
+import type { DeckId } from './decks';
+
+/** deck: null = עוד לא בחר (מוצגת בחירת חבילה בהתחלה); בפועל משתמשים ב-DEFAULT_DECK */
+export type Profile = { uid: string; username: string; photoURL: string; stats: UserStats; isGuest: boolean; deck: DeckId | null };
 
 export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 16;

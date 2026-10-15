@@ -54,7 +54,11 @@ describe('שולחן: משחק מלא ופרטיות', () => {
     let guard = 0;
     while (!clients.every((c) => c.over) && guard++ < 3000) {
       if (room.state!.phase !== 'playing') break;
-      const c = clients.find((x) => x.uid === room.state!.turn)!;
+      const st = room.state!;
+      const c = clients.find((x) => x.uid === st.turn)!;
+      // ממתינים שה-view של הקליינט מסונכרן עם השרת (אחרת המהלך מחושב ממצב ישן ונדחה)
+      await until(() => !!c.view && c.view.turn === st.turn && c.view.trick.plays.length === st.trick.plays.length
+        && c.view.trick.passed.length === st.trick.passedSinceLastPlay.length && c.view.hand.length === st.hands[c.uid].length);
       const v = c.view;
       const legal = getLegalPlays(v.hand, {
         leaderId: v.trick.leaderId, count: v.trick.count as never, plays: v.trick.plays,

@@ -1,7 +1,8 @@
 import type { Card, GameState, Play, Title } from './types';
+import { DEFAULT_DECK, type DeckId } from './decks';
 import { rankIndex } from './ranks';
 
-export type SeatInfo = { name: string; connected: boolean; isBot?: boolean; isGuest?: boolean; points?: number };
+export type SeatInfo = { name: string; connected: boolean; isBot?: boolean; isGuest?: boolean; points?: number; deck?: DeckId };
 
 export type SeatView = {
   id: string;
@@ -16,6 +17,8 @@ export type SeatView = {
   title: Title | null;
   /** דרגה לפי נקודות (אינדקס ב-RANK_STEPS); null לבוטים */
   rank: number | null;
+  /** חבילת הקלפים של השחקן (כך הקלפים שלו נראים לכולם) */
+  deck: DeckId;
 };
 
 /** מה שהקליינט מקבל: היד של השחקן עצמו בלבד, לאחרים רק מספר קלפים */
@@ -65,6 +68,7 @@ export function viewFor(
         isBot: seatInfo[id]?.isBot ?? false,
         isGuest: seatInfo[id]?.isGuest ?? false,
         title: state.previousTitles?.[id] ?? null,
+        deck: seatInfo[id]?.deck ?? DEFAULT_DECK,
         rank: seatInfo[id]?.isBot || seatInfo[id]?.points === undefined ? null : rankIndex(seatInfo[id]!.points!),
       };
     }),

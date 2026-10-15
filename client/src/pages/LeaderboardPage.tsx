@@ -17,7 +17,7 @@ function Row({ r, me }: { r: LeaderboardRow; me?: boolean }) {
         </div>
       </div>
       <div className="text-end">
-        <div className="t-cyan text-lg font-black tabular-nums">{r.points}</div>
+        <div className="t-cyan text-lg font-black tabular-nums"><bdi style={{ fontFamily: 'var(--font-he)' }}>{r.points}</bdi></div>
         <div className="label-dim text-[11px]" style={{ whiteSpace: 'nowrap' }}>פריזידנט {r.president} · אסהול {r.asshole}</div>
       </div>
     </li>

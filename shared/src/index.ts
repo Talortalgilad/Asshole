@@ -7,3 +7,4 @@ export * from './bot';
 export * from './profile';
 export * from './ranks';
 export * from './scoring';
+export * from './decks';
