@@ -21,7 +21,7 @@
 משתני סביבה:
 - `FIREBASE_SERVICE_ACCOUNT` – תוכן ה-JSON של ה-service account (או base64 שלו, אם Railway מתלונן על מרכאות/שורות חדשות: `base64 -w0 key.json`).
 - `CORS_ORIGIN` – (אופציונלי) כתובת האתר, למשל `https://xxx.up.railway.app`. הקליינט והשרת באותו origin, ולכן `*` עובד גם.
-- `PLAYERS`, `TURN_MS`, `BOT_DELAY_MS` – אופציונליים.
+- `TURN_MS`, `BOT_DELAY_MS`, `EXCHANGE_MS`, `EXCHANGE_REVIEW_MS`, `GRACE_MS`, `WAIT_GRACE_MS` – אופציונליים (זמנים במילישניות; שימושי לבדיקות מהירות).
 
 **בלי `FIREBASE_SERVICE_ACCOUNT` השרת עולה במצב פיתוח**: אין אימות, ואפשר להתחזות לכל uid. זה נועד רק ללוקאל.
 כשהמשתנה מוגדר, מצב הפיתוח נדחה והכניסה היא רק עם Google.

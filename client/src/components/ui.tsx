@@ -59,5 +59,5 @@ export function Seconds({ deadline }: { deadline: number }) {
     return () => clearInterval(t);
   }, []);
   const s = Math.max(0, Math.ceil((deadline - now) / 1000));
-  return <span className={`tabular-nums font-extrabold ${s <= 5 ? 't-magenta' : 't-cyan'}`}>{s}</span>;
+  return <span className={`tabular-nums font-extrabold ${s <= 5 ? 't-magenta' : 't-cyan'}`} style={{ fontFamily: 'var(--font-he)' }}>{s}</span>;
 }
