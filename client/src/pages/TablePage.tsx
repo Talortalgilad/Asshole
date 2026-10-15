@@ -28,7 +28,8 @@ export function TablePage() {
   useEffect(() => {
     if (wasIn.current && !c.tableId && !c.leaving) {
       // אם אף הודעה לא הסבירה את היציאה, מציגים קוד כדי שאפשר יהיה לאתר את הסיבה
-      if (!c.notice) c.actions.notify('חזרת ללובי בלי שביקשת (client:table-lost). שלח לי את הקוד הזה');
+      const explained = c.actions.consumeExplainedLeave();
+      if (!c.notice && !explained) c.actions.notify('חזרת ללובי בלי שביקשת (client:table-lost). שלח לי את הקוד הזה');
       nav('/lobby', { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

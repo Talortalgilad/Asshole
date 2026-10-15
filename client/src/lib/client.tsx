@@ -34,6 +34,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const tableIdRef = useRef<string | null>(null);
   /** למה ביקשנו לצאת מהשולחן (ui:* = לחיצה מפורשת של המשתמש; auto:* = אוטומטי, ומוצג בהודעה) */
   const leaveReason = useRef<string | null>(null);
+  const explainedLeave = useRef(false);
 
   const [connected, setConnected] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -90,7 +91,9 @@ function useClientState(getAuth: AuthPayload, key: string) {
       const r = leaveReason.current;
       leaveReason.current = null;
       // יציאה אוטומטית (לא לחיצה של המשתמש) מוצגת עם קוד סיבה, כדי שאפשר יהיה לאתר אותה
-      if (r && !r.startsWith('ui:')) say(`יצאת מהשולחן (${r})`);
+      if (!r) say('יצאת מהשולחן ממכשיר או מלשונית אחרת עם אותו חשבון (server:left-elsewhere)');
+      else if (!r.startsWith('ui:')) say(`יצאת מהשולחן (${r})`);
+      explainedLeave.current = true;
       resetTable();
     });
     // הסנכרון בכל חיבור: אם חשבתי שאני בשולחן והשרת לא מכיר אותו (נסגר בזמן שהייתי מנותק)
@@ -184,6 +187,8 @@ function useClientState(getAuth: AuthPayload, key: string) {
       leaveWaiters.current.push(() => { clearTimeout(t); resolve(); });
       emit('table:leave');
     }),
+    /** האם היציאה האחרונה מהשולחן כבר מוסברת (לחיצה של המשתמש או הודעה)? קריאה מאפסת */
+    consumeExplainedLeave: () => { const v = explainedLeave.current; explainedLeave.current = false; return v; },
     notify: (text: string) => setNotice({ id: ++noticeId.current, text }),
     addBot: (seat: number) => emit('room:addBot', { seat }),
     kick: (seat: number) => emit('room:kick', { seat }),
