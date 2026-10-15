@@ -26,7 +26,11 @@ export function TablePage() {
 
   // יצאנו / הוצאו אותנו / הוחלפנו בבוט: חזרה ללובי
   useEffect(() => {
-    if (wasIn.current && !c.tableId && !c.leaving) nav('/lobby', { replace: true });
+    if (wasIn.current && !c.tableId && !c.leaving) {
+      // אם אף הודעה לא הסבירה את היציאה, מציגים קוד כדי שאפשר יהיה לאתר את הסיבה
+      if (!c.notice) c.actions.notify('חזרת ללובי בלי שביקשת (client:table-lost). שלח לי את הקוד הזה');
+      nav('/lobby', { replace: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c.tableId, c.leaving]);
 

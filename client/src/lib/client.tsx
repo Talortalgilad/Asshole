@@ -184,6 +184,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
       leaveWaiters.current.push(() => { clearTimeout(t); resolve(); });
       emit('table:leave');
     }),
+    notify: (text: string) => setNotice({ id: ++noticeId.current, text }),
     addBot: (seat: number) => emit('room:addBot', { seat }),
     kick: (seat: number) => emit('room:kick', { seat }),
     start: () => emit('room:start'),
