@@ -18,7 +18,7 @@ type Props = {
   results: GameResult[] | null;
   isHost: boolean;
   error: string | null;
-  actions: { play(ids: string[]): void; pass(): void; again(): void };
+  actions: { play(ids: string[]): void; pass(): void; again(): void; lobby(): void };
 };
 
 export function GameScreen({ view, banners, log, closing, results, isHost, error, actions }: Props) {
@@ -89,7 +89,7 @@ export function GameScreen({ view, banners, log, closing, results, isHost, error
         </div>
       </div>
 
-      {view.phase === 'finished' && results && <FinishScreen results={results} uid={view.me} isHost={isHost} onAgain={actions.again} />}
+      {view.phase === 'finished' && results && <FinishScreen results={results} uid={view.me} isHost={isHost} onAgain={actions.again} onLobby={actions.lobby} />}
     </div>
   );
 }

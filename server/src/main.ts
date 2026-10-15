@@ -33,3 +33,6 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     process.exit(0);
   });
 }
+
+// רשת ביטחון: דחייה לא מטופלת נרשמת בלוג ולא מפילה את השרת (ומשחקים פעילים בזיכרון)
+process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));

@@ -76,8 +76,15 @@ export function createGameServer(opts: ServerOptions = {}) {
   const store: UserStore = opts.userStore ?? new MemoryUserStore();
 
   io.use(async (socket, next) => {
+    let id;
     try {
-      const id = await verifier.verify((socket.handshake.auth ?? {}) as Record<string, unknown>);
+      id = await verifier.verify((socket.handshake.auth ?? {}) as Record<string, unknown>);
+    } catch (e) {
+      const x = e as { code?: string; message?: string };
+      console.warn(`[auth] חיבור נדחה: ${x.code ?? ''} ${x.message ?? e}`.trim());
+      return next(new Error('unauthorized'));
+    }
+    try {
       socket.data.identity = id;
       // במצב פיתוח אין שלב שם משתמש: השם מגיע מהקליינט
       socket.data.profile = verifier.dev
@@ -92,9 +99,10 @@ export function createGameServer(opts: ServerOptions = {}) {
       }
       next();
     } catch (e) {
-      const x = e as { code?: string; message?: string };
-      console.warn(`[auth] חיבור נדחה: ${x.code ?? ''} ${x.message ?? e}`.trim());
-      next(new Error('unauthorized'));
+      // האימות עבר אבל ה-DB נכשל (למשל Firestore לא נוצר): לא "unauthorized"
+      const x = e as { code?: string | number; message?: string };
+      console.error(`[db] טעינת פרופיל נכשלה: ${x.code ?? ''} ${x.message ?? e}`.trim());
+      next(new Error('server_error'));
     }
   });
 
@@ -110,20 +118,28 @@ export function createGameServer(opts: ServerOptions = {}) {
 
     socket.on('profile:set', async (p?: { username?: unknown }) => {
       if (verifier.dev) return;
-      const r = typeof p?.username === 'string'
-        ? await store.setUsername(uid, p.username, socket.data.identity.photoURL, socket.data.identity.isGuest)
-        : { ok: false as const, reason: 'invalid' as const, message: 'בקשה לא תקינה' };
-      if (!r.ok) return void socket.emit('profile:error', { code: r.reason, message: r.message });
-      socket.data.profile = r.profile;
-      sendProfile();
-      room.rename(uid, r.profile.username, r.profile.photoURL, r.profile.isGuest);
+      try {
+        const r = typeof p?.username === 'string'
+          ? await store.setUsername(uid, p.username, socket.data.identity.photoURL, socket.data.identity.isGuest)
+          : { ok: false as const, reason: 'invalid' as const, message: 'בקשה לא תקינה' };
+        if (!r.ok) return void socket.emit('profile:error', { code: r.reason, message: r.message });
+        socket.data.profile = r.profile;
+        sendProfile();
+        room.rename(uid, r.profile.username, r.profile.photoURL, r.profile.isGuest);
+      } catch (e) {
+        // בלי try/catch, דחייה לא מטופלת הייתה מפילה את כל השרת
+        const x = e as { code?: string | number; message?: string };
+        console.error(`[db] שמירת שם משתמש נכשלה: ${x.code ?? ''} ${x.message ?? e}`.trim());
+        socket.emit('profile:error', { code: 'server_error', message: `שגיאת שרת בשמירה (${x.code ?? 'db'})` });
+      }
     });
 
     socket.on('room:join', () => {
       const profile = socket.data.profile as Profile | null;
       if (!profile) return void socket.emit('game:error', { code: 'no_profile', message: 'צריך לבחור שם משתמש' });
       const err = room.join(uid, profile.username, socket.id, profile.photoURL, profile.isGuest);
-      if (err) socket.emit('game:error', { code: 'join_failed', message: err });
+      // reason: ל-UI, כדי להסביר למה אי אפשר להיכנס (הדבר שהיה נבלע ונשאר מסך ריק)
+      if (err) socket.emit('game:error', { code: 'join_failed', reason: room.phase === 'waiting' ? 'full' : 'started', message: err });
     });
     socket.on('game:play', (p: { cardIds?: unknown }) => {
       if (!Array.isArray(p?.cardIds) || !p.cardIds.every((x) => typeof x === 'string')) {
@@ -136,6 +152,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       if (typeof p?.seat === 'number') room.kick(uid, p.seat);
     });
     socket.on('room:start', () => room.start(uid));
+    socket.on('room:lobby', () => room.lobby(uid));
     socket.on('game:pass', () => room.pass(uid));
     socket.on('game:again', () => room.again(uid));
     socket.on('disconnect', () => room.disconnect(uid, socket.id));

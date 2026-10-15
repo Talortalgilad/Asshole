@@ -252,3 +252,36 @@ describe('הגדרות פרודקשן', () => {
     warn.mockRestore();
   });
 });
+
+describe('כשל ב-DB (Firestore לא נוצר / לא נגיש)', () => {
+  it('store.get נכשל → connect_error=server_error (לא unauthorized), והשרת חי', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const broken = Object.assign(new MemoryUserStore(), { get: async () => { throw Object.assign(new Error('5 NOT_FOUND'), { code: 5 }); } });
+    server = createGameServer({ verifier: tokenVerifier(fakeVerify), userStore: broken });
+    const port = await server.listen(0);
+    const c = client(port, 'tok:u1:Dana');
+    await until(() => c.connectError !== null);
+    expect(c.connectError).toBe('server_error');
+    expect(err.mock.calls.some((x) => String(x[0]).includes('[db] טעינת פרופיל נכשלה'))).toBe(true);
+    expect((await fetch(`http://localhost:${port}/health`)).status).toBe(200);
+    err.mockRestore();
+  });
+
+  it('store.setUsername נכשל → profile:error=server_error ולא נופל (לא דחייה לא מטופלת)', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = new MemoryUserStore();
+    server = createGameServer({
+      verifier: tokenVerifier(fakeVerify),
+      userStore: Object.assign(store, { setUsername: async () => { throw Object.assign(new Error('PERMISSION_DENIED'), { code: 7 }); } }),
+    });
+    const port = await server.listen(0);
+    const c = client(port, 'anon:g1');
+    await until(() => c.profiles.length > 0);
+    c.s.emit('profile:set', { username: 'אורח77' });
+    await until(() => c.profileErrors.length > 0);
+    expect(c.profileErrors[0]).toMatchObject({ code: 'server_error' });
+    expect(c.profileErrors[0].message).toContain('7');
+    expect((await fetch(`http://localhost:${port}/health`)).status).toBe(200);
+    err.mockRestore();
+  });
+});

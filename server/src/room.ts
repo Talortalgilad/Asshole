@@ -41,6 +41,11 @@ export class GameRoom {
     this.seats = Array(opts.players).fill(null);
   }
 
+  /** 'waiting' כשאין משחק, אחרת שלב המשחק */
+  get phase(): string {
+    return this.state?.phase ?? 'waiting';
+  }
+
   // ---------- חדר המתנה ----------
 
   /** @returns הודעת שגיאה, או null אם הצליח */
@@ -109,6 +114,15 @@ export class GameRoom {
     if (!this.requireHost(uid)) return;
     if (this.state?.phase !== 'finished') return this.error(uid, 'not_finished', 'המשחק עוד לא נגמר');
     this.startNewGame();
+  }
+
+  /** אחרי משחק: חזרה לחדר ההמתנה (אותם מושבים ובוטים), כדי ששחקנים חדשים יוכלו להצטרף */
+  lobby(uid: string) {
+    if (!this.requireHost(uid)) return;
+    if (this.state?.phase !== 'finished') return this.error(uid, 'not_finished', 'המשחק עוד לא נגמר');
+    this.disarm();
+    this.state = null;
+    this.publish();
   }
 
   disconnect(uid: string, socketId: string) {

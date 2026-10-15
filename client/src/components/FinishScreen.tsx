@@ -2,7 +2,7 @@ import type { GameResult } from '../lib/useGameClient';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export function FinishScreen({ results, uid, isHost, onAgain }: { results: GameResult[]; uid: string; isHost: boolean; onAgain(): void }) {
+export function FinishScreen({ results, uid, isHost, onAgain, onLobby }: { results: GameResult[]; uid: string; isHost: boolean; onAgain(): void; onLobby(): void }) {
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
       <div className="anim-pop w-full max-w-sm rounded-2xl bg-green-950 p-5 shadow-2xl ring-1 ring-white/20">
@@ -16,7 +16,10 @@ export function FinishScreen({ results, uid, isHost, onAgain }: { results: GameR
           ))}
         </ol>
         {isHost ? (
-          <button onClick={onAgain} className="mt-4 w-full rounded-xl bg-yellow-400 py-3 text-lg font-extrabold text-black">משחק נוסף</button>
+          <div className="mt-4 flex flex-col gap-2">
+            <button onClick={onAgain} className="w-full rounded-xl bg-yellow-400 py-3 text-lg font-extrabold text-black">משחק נוסף</button>
+            <button onClick={onLobby} className="w-full rounded-xl bg-white/15 py-2.5 font-bold">חזרה לחדר ההמתנה (לשחקנים חדשים)</button>
+          </div>
         ) : (
           <p className="mt-4 text-center text-sm text-green-100/70">ממתינים שהמארח יתחיל משחק נוסף…</p>
         )}

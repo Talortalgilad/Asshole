@@ -5,6 +5,7 @@ import { bannerFor, cardLabel, logLine, nameOf, type Banner } from './game';
 
 export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean; photoURL?: string; isGuest?: boolean } | null;
 export type ProfileState = { uid: string; profile: Profile | null; suggested: string; dev: boolean; isGuest: boolean };
+export type JoinError = { code: string; reason?: 'started' | 'full'; message: string };
 export type AuthPayload = () => Promise<Record<string, unknown>>;
 export type TableState = {
   tableId: string; needed: number; phase: string; hostId: string | null; seats: TableSeat[];
@@ -35,6 +36,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<JoinError | null>(null);
   const [closingPlay, setClosingPlay] = useState<CenterPlay>(null);
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
     socket.on('connect_error', (e: Error) => { setConnected(false); setConnectError(e.message); });
     socket.on('table:state', (t: TableState) => {
       setTable(t);
+      setJoinError(null);
       if (t.phase === 'waiting') { setView(null); viewRef.current = null; setResults(null); setLog([]); }
     });
     socket.on('game:state', (v: GameView) => {
@@ -86,7 +89,8 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
       }
     });
     socket.on('game:over', (o: { results: GameResult[] }) => setResults(o.results));
-    socket.on('game:error', (e: { message: string }) => {
+    socket.on('game:error', (e: JoinError) => {
+      if (e.code === 'join_failed') setJoinError(e); // בלי זה המשתמש רואה מסך ריק
       setError(e.message);
       clearTimeout(errTimer);
       errTimer = setTimeout(() => setError(null), 3000);
@@ -98,7 +102,7 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
   const emit = useCallback((event: string, payload?: unknown) => socketRef.current?.emit(event, payload), []);
 
   return {
-    connected, table, view, results, banners, log, error, kicked, closingPlay, profile, profileError, connectError,
+    connected, table, view, results, banners, log, error, kicked, closingPlay, profile, profileError, connectError, joinError,
     actions: {
       play: (cardIds: string[]) => emit('game:play', { cardIds }),
       pass: () => emit('game:pass'),
@@ -107,7 +111,8 @@ export function useGameClient(getAuth: AuthPayload, key: string) {
       kick: (seat: number) => emit('room:kick', { seat }),
       again: () => emit('game:again'),
       setUsername: (username: string) => emit('profile:set', { username }),
-      rejoin: () => { setKicked(false); emit('room:join'); },
+      rejoin: () => { setKicked(false); setJoinError(null); emit('room:join'); },
+      lobby: () => emit('room:lobby'),
     },
   };
 }

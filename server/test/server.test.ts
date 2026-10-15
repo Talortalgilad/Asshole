@@ -233,3 +233,48 @@ describe('חדר המתנה, מארח ובוטים', () => {
     expect((await res.json()).ok).toBe(true);
   });
 });
+
+describe('הצטרפות לשולחן שכבר התחיל (היה מסך ריק בפרודקשן)', () => {
+  it('שחקן חדש מקבל join_failed עם reason=started, ולא נשאר בלי תשובה', async () => {
+    const { clients } = await lobbyWith(1);
+    const host = clients[0];
+    for (let i = 0; i < 3; i++) host.s.emit('room:addBot', {});
+    await until(() => lastTable(host).seats.every(Boolean));
+    host.s.emit('room:start');
+    await until(() => host.views.length > 0);
+    const late = mkClient((server.http.address() as { port: number }).port, 9);
+    await until(() => late.errors.some((e) => e.code === 'join_failed'));
+    expect(late.errors.find((e) => e.code === 'join_failed')).toMatchObject({ reason: 'started' });
+    expect(late.tables).toHaveLength(0);
+  });
+
+  it('שולחן מלא: reason=full', async () => {
+    const { clients, port } = await lobbyWith(4);
+    void clients;
+    const late = mkClient(port, 9);
+    await until(() => late.errors.some((e) => e.code === 'join_failed'));
+    expect(late.errors.find((e) => e.code === 'join_failed')).toMatchObject({ reason: 'full' });
+  });
+
+  it('אחרי המשחק המארח חוזר לחדר ההמתנה (room:lobby), ושחקן חדש מצטרף למושב פנוי', async () => {
+    const { clients, port } = await lobbyWith(1, 4, { turnMs: 5 });
+    const host = clients[0];
+    for (let i = 0; i < 3; i++) host.s.emit('room:addBot', {});
+    await until(() => lastTable(host).seats.every(Boolean));
+    host.s.emit('room:start');
+    await until(() => host.over !== null, 15_000);
+    const late = mkClient(port, 9);
+    await until(() => late.errors.some((e) => e.code === 'join_failed'));
+    late.s.emit('room:lobby'); // לא מארח
+    await until(() => late.errors.some((e) => e.code === 'not_host'));
+    host.s.emit('room:kick', { seat: 1 }); // עדיין במשחק (finished): אסור
+    await until(() => host.errors.some((e) => e.code === 'game_running'));
+    host.s.emit('room:lobby');
+    await until(() => lastTable(host).phase === 'waiting');
+    host.s.emit('room:kick', { seat: 1 }); // מפנים מושב
+    await until(() => lastTable(host).seats[1] === null);
+    late.s.emit('room:join');
+    await until(() => late.tables.length > 0);
+    expect(lastTable(late).seats.some((s: any) => s?.uid === 'user-9')).toBe(true);
+  });
+});

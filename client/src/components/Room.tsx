@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { suggestUsername } from '@asshole/shared';
 import { type AuthPayload, useGameClient } from '../lib/useGameClient';
 import { GameScreen } from './GameScreen';
 import { ProfileScreen } from './ProfileScreen';
 import { UsernameScreen } from './UsernameScreen';
+import { Waiting } from './Waiting';
 import { WaitingRoom } from './WaitingRoom';
 
 type Props = { getAuth: AuthPayload; authKey: string; onSignOut: () => void; onLinked?: (r: 'linked' | 'switched') => void };
@@ -12,29 +13,35 @@ export function Room({ getAuth, authKey, onSignOut, onLinked = () => {} }: Props
   const g = useGameClient(getAuth, authKey);
   const [showProfile, setShowProfile] = useState(false);
 
-  const [slow, setSlow] = useState(false);
+  // הצטרפות שנדחתה (משחק כבר התחיל / שולחן מלא): מנסים שוב לבד כל 5 שניות
+  const rejoinRef = useRef(g.actions.rejoin);
+  rejoinRef.current = g.actions.rejoin;
+  const joinBlocked = !!g.joinError;
   useEffect(() => {
-    if (g.profile) return setSlow(false);
-    const t = setTimeout(() => setSlow(true), 15_000);
-    return () => clearTimeout(t);
-  }, [g.profile]);
+    if (!joinBlocked) return;
+    const t = setInterval(() => rejoinRef.current(), 5000);
+    return () => clearInterval(t);
+  }, [joinBlocked]);
+
+  const reload = () => location.reload();
 
   if (!g.profile) {
-    const rejected = g.connectError === 'unauthorized';
-    if (rejected || slow) {
+    if (g.connectError) {
+      const rejected = g.connectError === 'unauthorized';
       return (
-        <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="text-xl font-bold">{rejected ? 'השרת דחה את ההתחברות' : 'השרת לא ענה'}</p>
-          <p className="text-sm text-green-100/80" dir="ltr">{g.connectError ?? 'timeout (15s)'}</p>
-          <p className="text-sm text-green-100/70">{rejected ? 'בדוק שהשרת מוגדר עם FIREBASE_SERVICE_ACCOUNT של אותו פרויקט Firebase.' : 'בדוק חיבור לאינטרנט ושהשרת פעיל.'}</p>
-          <div className="flex gap-3">
-            <button onClick={() => location.reload()} className="rounded-xl bg-yellow-400 px-5 py-2 font-bold text-black">נסה שוב</button>
-            <button onClick={onSignOut} className="rounded-xl bg-white/20 px-5 py-2 font-bold">התנתק</button>
-          </div>
-        </div>
+        <Waiting
+          label="" timeoutCode="" onRetry={reload} onBack={onSignOut} backLabel="התנתק"
+          error={{
+            title: rejected ? 'השרת דחה את ההתחברות' : 'שגיאת שרת', code: g.connectError,
+            hint: rejected ? 'בדוק שהשרת מוגדר עם FIREBASE_SERVICE_ACCOUNT של אותו פרויקט Firebase.' : 'השרת לא הצליח לטעון את הפרופיל. בדוק את הלוג של השרת (Firestore).',
+          }}
+        />
       );
     }
-    return <div className="flex h-full items-center justify-center text-lg">{g.connected ? 'טוען…' : 'מתחבר לשרת…'}</div>;
+    // key: הדדליין של 15 שניות מתחיל מחדש בכל שלב
+    return g.connected
+      ? <Waiting key="profile" label="טוען פרופיל…" timeoutCode="profile-timeout" onRetry={reload} onBack={onSignOut} backLabel="התנתק" />
+      : <Waiting key="connect" label="מתחבר לשרת…" timeoutCode="connect-timeout" onRetry={reload} onBack={onSignOut} backLabel="התנתק" />;
   }
   const uid = g.profile.uid;
   const me = g.profile.profile;
@@ -64,6 +71,23 @@ export function Room({ getAuth, authKey, onSignOut, onLinked = () => {} }: Props
         <button onClick={g.actions.rejoin} className="rounded-xl bg-yellow-400 px-6 py-3 font-extrabold text-black">חזרה לשולחן</button>
       </div>
     );
+  }
+  // נכנסנו לשרת אבל עוד אין שולחן: טעינה, ואם ההצטרפות נדחתה – מסבירים למה (במקום מסך ריק)
+  if (!g.view && !g.table) {
+    const j = g.joinError;
+    if (j) {
+      return (
+        <Waiting
+          label="" timeoutCode="" onRetry={g.actions.rejoin} onBack={() => setShowProfile(true)} backLabel="פרופיל"
+          error={{
+            title: j.reason === 'started' ? 'המשחק כבר התחיל' : j.reason === 'full' ? 'השולחן מלא' : 'לא ניתן להצטרף',
+            code: `${j.code}${j.reason ? `/${j.reason}` : ''}`,
+            hint: 'יש כרגע שולחן אחד בלבד. מנסה שוב אוטומטית כל 5 שניות, ותיכנס כשהמארח יחזור לחדר ההמתנה.',
+          }}
+        />
+      );
+    }
+    return <Waiting key="join" label="מצטרף לשולחן…" timeoutCode="join-timeout" onRetry={g.actions.rejoin} />;
   }
   return (
     <>

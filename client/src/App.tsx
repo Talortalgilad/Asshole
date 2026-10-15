@@ -6,6 +6,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { NameScreen } from './components/NameScreen';
 import { Room } from './components/Room';
 import { CardGallery } from './components/CardGallery';
+import { Waiting } from './components/Waiting';
 
 // מצב פיתוח (?dev או ?name=...): uid לכל טאב, בלי Google. עובד רק כשהשרת עצמו במצב פיתוח.
 // כך אפשר לפתוח 4 טאבים ולשחק מול עצמך בלי 4 חשבונות Google.
@@ -14,6 +15,7 @@ const DEV = params.has('dev') || params.has('name');
 
 export function App() {
   if (params.get('preview') === 'cards') return <CardGallery />; // דף כיוונון עיצוב
+  if (params.get('preview') === 'crash') throw new Error('בדיקת Error Boundary (?preview=crash)');
   return DEV ? <DevApp /> : <GoogleApp />;
 }
 
@@ -31,7 +33,7 @@ function GoogleApp() {
   // epoch: אחרי linkWithPopup ה-uid זהה ולכן צריך לכפות חיבור מחדש עם טוקן טרי (provider=google.com)
   const [epoch, setEpoch] = useState(0);
   const [notice, setNotice] = useState('');
-  if (auth.status === 'loading') return <div className="flex h-full items-center justify-center text-lg">טוען…</div>;
+  if (auth.status === 'loading') return <Waiting label="טוען…" timeoutCode="auth-timeout" onRetry={() => location.reload()} />;
   if (auth.status === 'out') return <LoginScreen />;
   return (
     <>

@@ -8,5 +8,9 @@ import '@fontsource/heebo/hebrew-800.css';
 import '@fontsource/heebo/hebrew-900.css';
 import './index.css';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+// שגיאות אסינכרוניות לא מפילות את ה-UI, אבל חשוב שיהיו בלוג
+window.addEventListener('unhandledrejection', (e) => console.error('[ui] unhandled rejection', e.reason));
+
+createRoot(document.getElementById('root')!).render(<StrictMode><ErrorBoundary><App /></ErrorBoundary></StrictMode>);

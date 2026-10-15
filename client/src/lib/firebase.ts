@@ -63,3 +63,12 @@ export async function linkGuestWithGoogle(): Promise<'linked' | 'switched'> {
     throw e;
   }
 }
+
+/** האם המשתמש המחובר כרגע הוא אורח (בטוח לקרוא גם כש-Firebase לא אותחל) */
+export function isGuestSession(): boolean {
+  try {
+    return cached?.currentUser?.isAnonymous === true;
+  } catch {
+    return false;
+  }
+}
