@@ -243,7 +243,7 @@ export class GameRoom {
     this.graceTimers.set(uid, setTimeout(() => {
       this.graceTimers.delete(uid);
       this.leave(uid);
-    }, waiting ? (this.opts.waitGraceMs ?? 8_000) : (this.opts.graceMs ?? 60_000)));
+    }, waiting ? (this.opts.waitGraceMs ?? 45_000) : (this.opts.graceMs ?? 60_000)));
     this.publish();
     if (this.state?.phase === 'playing' && this.state.turn === uid) this.armTimer();
   }
