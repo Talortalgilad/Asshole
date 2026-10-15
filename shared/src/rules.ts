@@ -178,7 +178,8 @@ export function applyPlay(
     closeTrick(state, leaderAfter(state, playerId));
     return { state, events };
   }
-  if (rank === TWO && n === 1) {
+  if (rank === TWO) {
+    // כל מהלך של 2 (בודד, זוג או שלשה) חותך: הסרייה נסגרת והשחקן פותח מחדש
     events.push({ type: 'cut', playerId, cards: sortHand(cards) });
     closeTrick(state, leaderAfter(state, playerId));
     return { state, events };

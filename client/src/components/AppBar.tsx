@@ -66,6 +66,8 @@ export function AppBar() {
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/profile')}>👤 פרופיל</button>
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/decks')}>🃏 חבילות קלפים</button>
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/leaderboard')}>🏆 טבלת אלופים</button>
+          {/* לשונית חדשה: לא מוציא מהשולחן */}
+          <a className="menu-item" role="menuitem" href="/how-to" target="_blank" rel="noopener" onClick={() => setOpen(false)}>📖 איך משחקים</a>
           {!session.dev && <button className="menu-item danger" role="menuitem" onClick={() => { setOpen(false); guard.requestSignOut(); }}>⏻ התנתקות</button>}
         </div>
       )}

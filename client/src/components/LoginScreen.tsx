@@ -59,6 +59,7 @@ export function LoginScreen() {
         </div>
 
         <p className="neon-dim text-xs">אורחים משחקים כרגיל, אך לא מופיעים בטבלת האלופים.</p>
+        <a href="/how-to" className="neon-dim text-sm underline" style={{ textUnderlineOffset: 3 }}>📖 איך משחקים?</a>
         {!inst.hidden && (
           <div className="flex flex-col items-center gap-2">
             <button type="button" className="chip" style={{ cursor: 'pointer', padding: '.5rem 1rem' }}

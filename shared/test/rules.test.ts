@@ -58,6 +58,19 @@ describe('מנוע חוקים', () => {
     expect(r.state.trick.plays).toHaveLength(0);
   });
 
+  it('3א. זוג 2 על זוג – חיתוך: הסרייה נסגרת ואותו שחקן פותח', () => {
+    const s = mk(
+      { B: ['2C', '2D', '4D'], C: ['KC', 'KD', 'QC'] },
+      { count: 2, sameRankStreak: 2, plays: [play1(10, 'A', ['10C', '10D'])] },
+      { turn: 'B' },
+    );
+    const r = play(s, 'B', '2C', '2D');
+    expect(r.events.map((e) => e.type)).toContain('cut');
+    expect(r.state.turn).toBe('B');
+    expect(r.state.trick.count).toBeNull();
+    expect(r.state.trick.plays).toHaveLength(0);
+  });
+
   it('4. 9 על 9 – השחקן הבא מדולג', () => {
     const s = mk(
       { B: ['9D', 'KC'] },

@@ -3,6 +3,7 @@ import { CardGallery } from './components/CardGallery';
 import { DecksPanel, FirstDeckPicker } from './components/DecksPanel';
 import { NeonScreen } from './components/NeonBackground';
 import { Shell } from './components/Shell';
+import { HowToPage } from './pages/HowToPage';
 import { JoinByCodePage } from './pages/JoinByCodePage';
 import { DecksPage } from './pages/DecksPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
@@ -12,6 +13,7 @@ import { TablePage } from './pages/TablePage';
 
 // route לכל מסך, כדי שכפתור "אחורה" של הדפדפן והטלפון יעבוד
 const router = createBrowserRouter([
+  { path: '/how-to', element: <HowToPage /> }, // ציבורי: גם לפני כניסה
   {
     path: '/',
     element: <Shell />,
