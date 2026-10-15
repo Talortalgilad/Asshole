@@ -31,12 +31,12 @@ export function FinishScreen({ results, uid, isHost, onAgain, onWaiting, onExit 
             {isHost ? (
               <>
                 <NeonButton onClick={onAgain}>משחק נוסף</NeonButton>
-                <NeonButton tone="magenta" small onClick={onWaiting}>חזרה לחדר המתנה (לשחקנים חדשים)</NeonButton>
+                <NeonButton tone="dim" small onClick={onWaiting}>חזרה לחדר המתנה (לשחקנים חדשים)</NeonButton>
               </>
             ) : (
               <p className="label-dim text-center">ממתינים שהמארח יתחיל משחק נוסף…</p>
             )}
-            <NeonButton tone="magenta" small onClick={onExit}>יציאה ללובי</NeonButton>
+            <NeonButton tone="dim" small onClick={onExit}>יציאה ללובי</NeonButton>
           </div>
         </Panel>
       </div>

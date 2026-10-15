@@ -32,7 +32,7 @@ export function Avatar({ url, name, size = 40 }: { url?: string; name: string; s
   );
 }
 
-export const GuestTag = () => <span className="chip magenta">אורח</span>;
+export const GuestTag = () => <span className="chip ghost">אורח</span>;
 export const BotTag = () => <span className="chip dim">🤖 בוט</span>;
 
 /** פס ניאון שמתרוקן לפי הזמן שנותר עד deadline (ms epoch). total = משך מלא, אם ידוע. */

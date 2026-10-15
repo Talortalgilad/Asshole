@@ -45,13 +45,13 @@ export function WaitingRoom() {
       </div>
 
       {table.inviteCode && (
-        <Panel tone="magenta" small>
+        <Panel tone="dim" small>
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="label-dim">קוד הזמנה</div>
-              <div dir="ltr" className="t-magenta text-2xl font-black" style={{ letterSpacing: '.22em' }}>{table.inviteCode}</div>
+              <div dir="ltr" className="t-cyan text-2xl font-black" style={{ letterSpacing: '.22em' }}>{table.inviteCode}</div>
             </div>
-            <div className="w-40"><NeonButton tone="magenta" small onClick={share}>{copied ? '✓ הועתק' : 'שתף קישור'}</NeonButton></div>
+            <div className="w-40"><NeonButton tone="dim" small onClick={share}>{copied ? '✓ הועתק' : 'שתף קישור'}</NeonButton></div>
           </div>
         </Panel>
       )}

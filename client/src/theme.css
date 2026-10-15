@@ -10,13 +10,15 @@
   --violet-deep: #170d33;
   /* ניאון */
   --cyan: #00f0ff;        /* ראשי */
-  --magenta: #ff2bd6;     /* משני */
+  --magenta: #ff2bd6;     /* משני: רק להדגשות חשובות (שגיאה, חיתוך, יציאה) */
+  --rose: #ff7d96;        /* לבבות ויהלומים: וורוד מעומעם */
+  --ice: #dce9f2;         /* תלתן ועלה: כמעט לבן */
   /* טקסט */
   --text: #e9fbff;
   --text-dim: #9fb0d4;
   /* עוצמות (0 = כבוי, 1 = ברירת מחדל, עד ~1.6) */
-  --glow: 1;
-  --grid-opacity: 0.6;
+  --glow: 0.6;
+  --grid-opacity: 0.3;
   /* פונטים: Orbitron לאנגלית ולמספרים, Heebo לעברית (ל-Orbitron אין עברית, והדפדפן עובר ל-Heebo אוטומטית) */
   --font-neon: 'Orbitron', 'Heebo', system-ui, sans-serif;
   --font-he: 'Heebo', system-ui, sans-serif;
@@ -24,7 +26,7 @@
 
 /* בטלפון פחות blur וצללים כבדים */
 @media (max-width: 640px) {
-  :root { --glow: 0.65; }
+  :root { --glow: 0.42; }
 }
 
 /* ---------- בסיס ---------- */
@@ -45,8 +47,8 @@
   content: '';
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 70% 38% at 50% 100%, color-mix(in srgb, var(--magenta) calc(30% * var(--glow)), transparent), transparent 70%),
-    radial-gradient(ellipse 50% 30% at 50% 78%, color-mix(in srgb, var(--violet) 70%, transparent), transparent 70%);
+    radial-gradient(ellipse 70% 38% at 50% 100%, color-mix(in srgb, var(--magenta) calc(11% * var(--glow)), transparent), transparent 70%),
+    radial-gradient(ellipse 50% 30% at 50% 78%, color-mix(in srgb, var(--violet) 45%, transparent), transparent 70%);
 }
 .neon-bg::after { /* גריד פרספקטיבה */
   content: '';
@@ -71,13 +73,11 @@
   letter-spacing: .02em;
   color: var(--text);
   text-shadow:
-    0 0 calc(6px * var(--glow)) color-mix(in srgb, var(--cyan) 90%, transparent),
-    0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--cyan) 55%, transparent),
-    0 0 calc(40px * var(--glow)) color-mix(in srgb, var(--magenta) 40%, transparent);
+    0 0 calc(6px * var(--glow)) color-mix(in srgb, var(--cyan) 80%, transparent),
+    0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--cyan) 40%, transparent);
   position: relative;
 }
-.neon-sub { font-family: var(--font-neon); letter-spacing: .5em; color: var(--magenta); font-weight: 700;
-  text-shadow: 0 0 calc(8px * var(--glow)) color-mix(in srgb, var(--magenta) 80%, transparent); }
+.neon-sub { font-family: var(--font-neon); letter-spacing: .5em; color: var(--text-dim); font-weight: 700; }
 .neon-dim { color: var(--text-dim); }
 
 /* glitch קצר (0.8 שנ'), בכניסה ובאירועים */
@@ -117,6 +117,10 @@
   transition: filter .15s ease, transform .1s ease;
 }
 .neon-btn-wrap.tone-magenta { --c: var(--magenta); }
+/* משני: קווי מתאר שקטים, כמעט בלי זוהר */
+.neon-btn-wrap.tone-dim { --c: color-mix(in srgb, var(--cyan) 28%, var(--text-dim)); filter: none; }
+.neon-btn-wrap.tone-dim:not(.disabled):hover { filter: drop-shadow(0 0 calc(6px * var(--glow)) color-mix(in srgb, var(--c) 60%, transparent)); }
+.neon-btn-wrap.tone-dim .neon-btn { text-shadow: none; color: var(--text); }
 .neon-btn-wrap.small { --cut: 10px; }
 .neon-btn-wrap:not(.disabled):hover {
   filter:
@@ -175,20 +179,20 @@
   line-height: 1;
   color: var(--c);
   border-radius: calc(var(--w) * .13);
-  border: calc(var(--w) * .035) solid color-mix(in srgb, var(--c) 82%, transparent);
+  border: calc(var(--w) * .03) solid color-mix(in srgb, var(--c) 45%, var(--bg-1));
   background:
-    radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--c) 9%, transparent), transparent 62%),
+    radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--c) 6%, transparent), transparent 62%),
     linear-gradient(165deg, #15112f 0%, #0a0918 100%);
   box-shadow:
-    0 0 calc(var(--w) * .16 * var(--glow)) color-mix(in srgb, var(--c) 50%, transparent),
-    inset 0 0 calc(var(--w) * .14 * var(--glow)) color-mix(in srgb, var(--c) 20%, transparent);
+    0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 30%, transparent),
+    inset 0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 10%, transparent);
   transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease, filter .15s ease;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
 }
-.ncard.suit-H, .ncard.suit-D { --c: var(--magenta); }
-.ncard.suit-C, .ncard.suit-S { --c: var(--cyan); }
+.ncard.suit-H, .ncard.suit-D { --c: var(--rose); }
+.ncard.suit-C, .ncard.suit-S { --c: var(--ice); }
 .ncard.xs { --w: 1.35rem; border-radius: .22rem; }
 .ncard.sm { --w: 2.6rem; }
 .ncard.lg { --w: 4.6rem; }
@@ -208,22 +212,22 @@
   font-family: var(--font-he);
   font-size: calc(var(--w) * .44);
   padding-top: calc(var(--w) * .02);
-  text-shadow: 0 0 calc(var(--w) * .2 * var(--glow)) color-mix(in srgb, var(--c) 70%, transparent);
+  text-shadow: none;
 }
 
 .ncard.selected {
   transform: translateY(calc(var(--w) * -.24));
   box-shadow:
-    0 0 calc(var(--w) * .26 * var(--glow)) var(--c),
-    0 0 calc(var(--w) * .7 * var(--glow)) color-mix(in srgb, var(--c) 55%, transparent),
-    inset 0 0 calc(var(--w) * .2 * var(--glow)) color-mix(in srgb, var(--c) 35%, transparent);
-  border-color: var(--text);
+    0 0 calc(var(--w) * .26 * var(--glow)) var(--cyan),
+    0 0 calc(var(--w) * .7 * var(--glow)) color-mix(in srgb, var(--cyan) 45%, transparent);
+  border-color: var(--cyan);
 }
 .ncard.dim { opacity: .38; filter: saturate(.55); }
 .ncard:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 
 .ncard.back {
   --c: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 40%, var(--bg-1));
   background: linear-gradient(165deg, #120d2a, #080714);
   overflow: hidden;
 }
@@ -263,8 +267,8 @@
 
 /* שורת רשימה קלה (בלי filter, בשביל רשימות ארוכות) */
 .row-card {
-  border: 1px solid color-mix(in srgb, var(--cyan) 38%, transparent);
-  background: color-mix(in srgb, var(--violet) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cyan) 26%, transparent);
+  background: color-mix(in srgb, var(--violet) 40%, transparent);
   border-radius: 6px;
 }
 .row-card.active { border-color: var(--cyan); box-shadow: 0 0 calc(10px * var(--glow)) color-mix(in srgb, var(--cyan) 45%, transparent); }
@@ -334,7 +338,7 @@
 .timer-bar.low > i { background: var(--magenta); box-shadow: 0 0 calc(8px * var(--glow)) var(--magenta); }
 
 /* אירועי משחק: הבזק ניאון + טקסט מרצד (עד 0.8 שנ') */
-@keyframes flash-screen { 0% { opacity: 0; } 12% { opacity: .5; } 100% { opacity: 0; } }
+@keyframes flash-screen { 0% { opacity: 0; } 12% { opacity: .26; } 100% { opacity: 0; } }
 .flash-layer { position: fixed; inset: 0; z-index: 35; pointer-events: none; animation: flash-screen .8s ease-out both; }
 .flash-layer.tone-cyan { background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--cyan) 55%, transparent), transparent 65%); }
 .flash-layer.tone-magenta { background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--magenta) 55%, transparent), transparent 65%); }

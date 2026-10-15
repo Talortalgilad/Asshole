@@ -10,8 +10,10 @@ const SHOW: Rank[] = [14, 13, 12, 11, 10, 7, 3, 15];
 /** דף כיוונון: /?preview=cards. משנה את משתני ה-theme חי, כדי לבחור צבעים ועוצמת זוהר. */
 export function CardGallery() {
   const root = document.documentElement.style;
-  const [glow, setGlow] = useState(1);
-  const [grid, setGrid] = useState(0.5);
+  const [glow, setGlow] = useState(0.6);
+  const [grid, setGrid] = useState(0.3);
+  const [rose, setRose] = useState('#ff7d96');
+  const [ice, setIce] = useState('#dce9f2');
   const [cyan, setCyan] = useState('#00f0ff');
   const [magenta, setMagenta] = useState('#ff2bd6');
   const [sel, setSel] = useState<string | null>('14H');
@@ -20,6 +22,8 @@ export function CardGallery() {
   useEffect(() => { root.setProperty('--grid-opacity', String(grid)); }, [grid, root]);
   useEffect(() => { root.setProperty('--cyan', cyan); }, [cyan, root]);
   useEffect(() => { root.setProperty('--magenta', magenta); }, [magenta, root]);
+  useEffect(() => { root.setProperty('--rose', rose); }, [rose, root]);
+  useEffect(() => { root.setProperty('--ice', ice); }, [ice, root]);
 
   const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <section className="flex flex-col gap-2">
@@ -43,7 +47,9 @@ export function CardGallery() {
             <input type="range" min="0" max="1" step="0.05" value={grid} onChange={(e) => setGrid(+e.target.value)} />
           </label>
           <label className="flex items-center gap-2">ציאן <input type="color" value={cyan} onChange={(e) => setCyan(e.target.value)} /> <code dir="ltr">{cyan}</code></label>
-          <label className="flex items-center gap-2">מג'נטה <input type="color" value={magenta} onChange={(e) => setMagenta(e.target.value)} /> <code dir="ltr">{magenta}</code></label>
+          <label className="flex items-center gap-2">מג'נטה (הדגשות) <input type="color" value={magenta} onChange={(e) => setMagenta(e.target.value)} /> <code dir="ltr">{magenta}</code></label>
+          <label className="flex items-center gap-2">לבבות/יהלומים <input type="color" value={rose} onChange={(e) => setRose(e.target.value)} /> <code dir="ltr">{rose}</code></label>
+          <label className="flex items-center gap-2">תלתן/עלה <input type="color" value={ice} onChange={(e) => setIce(e.target.value)} /> <code dir="ltr">{ice}</code></label>
         </div>
 
         {SUITS.map((s) => (

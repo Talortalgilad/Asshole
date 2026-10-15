@@ -69,7 +69,7 @@ export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLink
             {linkErr && <p className="t-magenta text-center text-sm font-bold" dir="auto" role="alert"><Mixed>{linkErr}</Mixed></p>}
           </>
         )}
-        {!dev && <NeonButton small tone="cyan" onClick={() => setEditing(true)}>שנה שם משתמש</NeonButton>}
+        {!dev && <NeonButton small tone="dim" onClick={() => setEditing(true)}>שנה שם משתמש</NeonButton>}
         {!dev && <NeonButton small tone="magenta" onClick={onSignOut}>התנתק</NeonButton>}
       </div>
     </div>

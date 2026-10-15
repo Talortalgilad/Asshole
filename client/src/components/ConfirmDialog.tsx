@@ -7,7 +7,7 @@ export function ConfirmDialog({ message, confirmLabel, cancelLabel, onConfirm, o
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={onCancel}>
       <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <Panel tone="magenta">
+        <Panel tone="dim">
           <p className="mb-5 text-center text-lg font-bold" style={{ fontFamily: 'var(--font-he)' }}>{message}</p>
           <div className="flex flex-col gap-3">
             <NeonButton tone="magenta" small onClick={onConfirm}>{confirmLabel}</NeonButton>

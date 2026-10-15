@@ -36,7 +36,7 @@ export function UsernameScreen({ initial, serverError, title, submitLabel, onSub
             {localError || serverError || (timedOut ? 'השרת לא ענה (profile-save-timeout). נסה שוב.' : pending ? 'שומר…' : '')}
           </div>
           <NeonButton disabled={!check.ok || (pending && !timedOut)} onClick={submit}>{submitLabel}</NeonButton>
-          {onCancel && <NeonButton tone="magenta" small onClick={onCancel}>ביטול</NeonButton>}
+          {onCancel && <NeonButton tone="dim" small onClick={onCancel}>ביטול</NeonButton>}
         </div>
       </Panel>
     </form>

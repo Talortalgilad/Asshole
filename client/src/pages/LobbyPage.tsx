@@ -49,7 +49,7 @@ function CreateDialog({ onClose, onCreate, hostName }: { onClose(): void; onCrea
           <p className="label-dim mb-5 min-h-8">{priv ? 'שולחן פרטי לא מופיע ברשימה. מצטרפים אליו רק עם קישור או קוד הזמנה.' : 'שולחן ציבורי מופיע בלובי לכולם.'}</p>
           <div className="flex flex-col gap-3">
             <NeonButton onClick={() => onCreate({ maxPlayers: max, isPrivate: priv, name: name.trim() })}>צור שולחן</NeonButton>
-            <NeonButton tone="magenta" small onClick={onClose}>ביטול</NeonButton>
+            <NeonButton tone="dim" small onClick={onClose}>ביטול</NeonButton>
           </div>
         </Panel>
       </div>
@@ -71,7 +71,7 @@ function TableRow({ t, onJoin, busy }: { t: LobbyTable; onJoin(): void; busy: bo
         </div>
       </div>
       <div className="w-28 shrink-0">
-        <NeonButton small tone={joinable ? 'cyan' : 'magenta'} disabled={!joinable || busy} onClick={onJoin}>
+        <NeonButton small tone={joinable ? 'cyan' : 'dim'} disabled={!joinable || busy} onClick={onJoin}>
           {joinable ? 'הצטרף' : t.players >= t.max && t.phase === 'waiting' ? 'מלא' : 'במשחק'}
         </NeonButton>
       </div>
@@ -142,7 +142,7 @@ export function LobbyPage() {
           <input id="invite" className="neon-input" dir="ltr" style={{ textTransform: 'uppercase', letterSpacing: '.18em', textAlign: 'center' }} value={code} maxLength={8}
             onChange={(e) => setCode(e.target.value)} placeholder="ABC123" autoComplete="off" />
         </div>
-        <div className="w-28"><NeonButton small tone="magenta" disabled={!code.trim() || busy} onClick={() => void enter(c.actions.joinTable({ code }))}>הצטרף</NeonButton></div>
+        <div className="w-28"><NeonButton small tone="dim" disabled={!code.trim() || busy} onClick={() => void enter(c.actions.joinTable({ code }))}>הצטרף</NeonButton></div>
       </form>
 
       <section>
@@ -157,7 +157,7 @@ export function LobbyPage() {
                 <Avatar url={u.photoURL} name={u.name} size={32} />
                 <span className="min-w-0 flex-1 truncate font-bold" style={{ fontFamily: 'var(--font-he)' }}>{u.name}{u.uid === me?.uid ? ' (אני)' : ''}</span>
                 {u.isGuest && <GuestTag />}
-                <span className={`chip ${u.at ? 'ghost magenta' : 'ghost'}`}>{u.at ?? 'בלובי'}</span>
+                <span className="chip ghost" style={u.at ? undefined : { opacity: .7 }}>{u.at ?? 'בלובי'}</span>
               </li>
             ))}
           </ul>

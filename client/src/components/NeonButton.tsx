@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> & {
-  tone?: 'cyan' | 'magenta';
+  tone?: 'cyan' | 'magenta' | 'dim';
   small?: boolean;
   children: ReactNode;
 };

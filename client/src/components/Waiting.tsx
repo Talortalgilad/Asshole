@@ -51,7 +51,7 @@ export function Waiting({ label, timeoutCode, error, onRetry, onBack, backLabel 
       {err.hint && <p className="label-dim max-w-xs text-sm"><Mixed>{typeof err.hint === 'string' ? err.hint : ''}</Mixed>{typeof err.hint === 'string' ? null : err.hint}</p>}
       <div className="flex w-full max-w-xs flex-col gap-3">
         {onRetry && <NeonButton small onClick={onRetry}>נסה שוב</NeonButton>}
-        {onBack && <NeonButton small tone="magenta" onClick={onBack}>{backLabel}</NeonButton>}
+        {onBack && <NeonButton small tone="dim" onClick={onBack}>{backLabel}</NeonButton>}
       </div>
     </div>
   );

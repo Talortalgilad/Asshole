@@ -19,7 +19,7 @@ export function CrashScreen({ error, componentStack, guest, onReload, onLogin }:
             <p className="label-dim">האפליקציה נתקלה בשגיאה. אפשר לנסות שוב, או לחזור למסך הכניסה.</p>
             <pre dir="ltr" className="max-h-56 w-full overflow-auto whitespace-pre-wrap rounded p-3 text-left text-xs" style={{ background: 'var(--bg-0)', border: '1px solid color-mix(in srgb, var(--magenta) 50%, transparent)' }}>{details}</pre>
             <NeonButton small onClick={onReload}>נסה שוב</NeonButton>
-            <NeonButton small tone="magenta" onClick={onLogin}>חזרה למסך הכניסה</NeonButton>
+            <NeonButton small tone="dim" onClick={onLogin}>חזרה למסך הכניסה</NeonButton>
             {guest && <p className="label-dim text-xs">שים לב: אתה מחובר כאורח. חזרה למסך הכניסה מתנתקת, וחשבון האורח הנוכחי ייעלם. עדיף קודם "נסה שוב".</p>}
           </div>
         </Panel>

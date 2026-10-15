@@ -50,7 +50,7 @@ export function LoginScreen() {
             <GoogleG />
             {busy === 'google' ? 'מתחבר…' : 'התחבר עם Google'}
           </NeonButton>
-          <NeonButton tone="magenta" small disabled={busy !== null} onClick={() => run('guest', loginAsGuest)}>
+          <NeonButton tone="dim" small disabled={busy !== null} onClick={() => run('guest', loginAsGuest)}>
             {busy === 'guest' ? 'נכנס…' : 'שחק כאורח'}
           </NeonButton>
         </div>

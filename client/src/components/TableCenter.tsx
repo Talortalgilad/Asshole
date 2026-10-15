@@ -16,7 +16,7 @@ export function TableCenter({ view, closing }: { view: GameView; closing: Center
   return (
     <div className="relative flex min-h-[10rem] flex-1 flex-col items-center justify-center gap-2 px-2 sm:min-h-[13rem]">
       {t.mustGoLower && (
-        <div className="chip magenta" style={{ fontSize: '.85rem', padding: '.3rem .8rem', boxShadow: '0 0 calc(12px * var(--glow)) var(--magenta)' }}>
+        <div className="chip magenta" style={{ fontSize: '.85rem', padding: '.3rem .8rem' }}>
           ⬇️ יורדים: מתחת ל-7 (או 7)
         </div>
       )}
