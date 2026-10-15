@@ -27,6 +27,7 @@ export function WaitingRoom() {
   const full = table.seats.every(Boolean);
   const link = table.inviteCode ? `${location.origin}/join/${table.inviteCode}` : '';
   const [copied, setCopied] = useState(false);
+  const waLink = `https://wa.me/?text=${encodeURIComponent(`בוא לשחק איתי פריזידנט! 🃏\nהשולחן: ${table.name}\n${link}`)}`;
 
   const share = async () => {
     if (!link) return;
@@ -51,7 +52,12 @@ export function WaitingRoom() {
               <div className="label-dim">קוד הזמנה</div>
               <div dir="ltr" className="t-cyan text-2xl font-black" style={{ letterSpacing: '.22em' }}>{table.inviteCode}</div>
             </div>
-            <div className="w-40"><NeonButton tone="dim" small onClick={share}>{copied ? '✓ הועתק' : 'שתף קישור'}</NeonButton></div>
+            <div className="flex w-40 flex-col gap-2">
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="chip" style={{ justifyContent: 'center', padding: '.55rem .7rem', fontWeight: 800, color: '#25d366', borderColor: '#25d366', textDecoration: 'none' }}>
+                💬 הזמן בוואטסאפ
+              </a>
+              <NeonButton tone="dim" small onClick={share}>{copied ? '✓ הועתק' : 'שתף קישור'}</NeonButton>
+            </div>
           </div>
         </Panel>
       )}
