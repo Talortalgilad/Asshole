@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
-import { type Profile } from '@asshole/shared';
+import { rankIndex, type Profile } from '@asshole/shared';
 import { devVerifier, type Verifier } from './auth';
 import { MemoryUserStore, type UserStore } from './users';
 import type { RoomOptions } from './room';
@@ -67,7 +67,7 @@ export function createGameServer(opts: ServerOptions = {}) {
   });
   const io = new Server(http, { cors: { origin: opts.corsOrigin ?? '*' } });
 
-  type Online = { uid: string; name: string; photoURL: string; isGuest: boolean; sockets: number };
+  type Online = { uid: string; name: string; photoURL: string; isGuest: boolean; sockets: number; points: number };
   const online = new Map<string, Online>();
 
   // ---------- לובי: רשימת שולחנות ומחוברים (מתעדכן בדחייה קצרה כדי לא להציף) ----------
@@ -76,7 +76,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     tables: manager.list(),
     online: [...online.values()].filter((o) => o.name).map((o) => {
       const t = manager.tableOf(o.uid);
-      return { uid: o.uid, name: o.name, photoURL: o.photoURL, isGuest: o.isGuest, at: t ? (t.isPrivate ? 'שולחן פרטי' : t.name) : null };
+      return { uid: o.uid, name: o.name, photoURL: o.photoURL, isGuest: o.isGuest, rank: rankIndex(o.points), at: t ? (t.isPrivate ? 'שולחן פרטי' : t.name) : null };
     }).sort((a, b) => Number(!!a.at) - Number(!!b.at) || a.name.localeCompare(b.name, 'he')),
   });
   const broadcastLobby = () => {
@@ -87,16 +87,28 @@ export function createGameServer(opts: ServerOptions = {}) {
     }, 60);
   };
 
+  const verifier = opts.verifier ?? devVerifier();
+  const store: UserStore = opts.userStore ?? new MemoryUserStore();
+  // ניקוד נשמר רק עם אימות אמיתי (במצב פיתוח אין משתמשים שמורים)
+  const onGameEnd = verifier.dev ? undefined : async (g: Parameters<UserStore['recordGame']>[0]) => {
+    const out = await store.recordGame(g);
+    for (const [uid, o] of Object.entries(out)) {
+      const e = online.get(uid);
+      if (e && o.stats) e.points = o.stats.points;
+    }
+    broadcastLobby();
+    return out;
+  };
+
   const manager: RoomManager = new RoomManager({
     turnMs: opts.turnMs ?? 30_000,
     rng: opts.rng,
     botDelayMs: opts.botDelayMs,
     ...opts.roomOptions,
+    onGameEnd,
     send: (uid, event, payload) => io.to(`u:${uid}`).emit(event, payload),
   }, broadcastLobby);
 
-  const verifier = opts.verifier ?? devVerifier();
-  const store: UserStore = opts.userStore ?? new MemoryUserStore();
 
   io.use(async (socket, next) => {
     let id;
@@ -140,12 +152,12 @@ export function createGameServer(opts: ServerOptions = {}) {
       });
 
     // רישום ברשימת המחוברים (מוצג בלובי רק למי שיש לו שם משתמש)
-    const entry = online.get(uid) ?? { uid, name: '', photoURL: '', isGuest: false, sockets: 0 };
+    const entry = online.get(uid) ?? { uid, name: '', photoURL: '', isGuest: false, sockets: 0, points: 0 };
     entry.sockets += 1;
     online.set(uid, entry);
     const trackOnline = () => {
       const p = profileOf();
-      if (p) { entry.name = p.username; entry.photoURL = p.photoURL; entry.isGuest = p.isGuest; }
+      if (p) { entry.name = p.username; entry.photoURL = p.photoURL; entry.isGuest = p.isGuest; entry.points = p.stats?.points ?? 0; }
     };
     trackOnline();
     broadcastLobby();
@@ -157,7 +169,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     {
       const t = joinedTable();
       const p = profileOf();
-      if (t && p && !t.join(uid, p.username, socket.id, p.photoURL, p.isGuest)) {
+      if (t && p && !t.join(uid, p.username, socket.id, p.photoURL, p.isGuest, p.stats?.points ?? 0)) {
         socket.emit('table:joined', { tableId: t.tableId, inviteCode: t.inviteCode });
       }
     }
@@ -208,7 +220,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       const room = manager.create({
         maxPlayers, isPrivate: p?.isPrivate === true, name: rawName || `השולחן של ${prof.username}`,
       });
-      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest);
+      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest, prof.stats?.points ?? 0);
       if (err) return joinFailed(err, 'closed');
       socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
     });
@@ -225,7 +237,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       if (cur && cur !== room) {
         return void socket.emit('game:error', { code: 'already_in_table', tableId: cur.tableId, message: 'אתה כבר יושב בשולחן אחר. צא ממנו קודם.' });
       }
-      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest);
+      const err = room.join(uid, prof.username, socket.id, prof.photoURL, prof.isGuest, prof.stats?.points ?? 0);
       if (err) return joinFailed(err, room.isClosed ? 'closed' : room.phase === 'waiting' ? 'full' : 'started');
       socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
     });
@@ -234,6 +246,18 @@ export function createGameServer(opts: ServerOptions = {}) {
       manager.tableOf(uid)?.leave(uid);
       io.to(`u:${uid}`).emit('table:left', {});
       broadcastLobby();
+    });
+
+    // ---------- טבלת אלופים ----------
+    socket.on('leaderboard:get', async (p?: { period?: unknown }) => {
+      const period = p?.period === 'month' ? 'month' : 'all';
+      try {
+        socket.emit('leaderboard:state', await store.leaderboard(period, uid));
+      } catch (e) {
+        const x = e as { code?: string | number; message?: string };
+        console.error(`[db] טעינת טבלה נכשלה: ${x.code ?? ''} ${x.message ?? e}`.trim());
+        socket.emit('game:error', { code: 'leaderboard_failed', message: `הטבלה לא נטענה (${x.code ?? 'db'})` });
+      }
     });
 
     // ---------- בתוך שולחן ----------

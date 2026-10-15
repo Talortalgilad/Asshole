@@ -10,6 +10,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    // טבלת אלופים: נכתבת רק מהשרת, ורק למשתמשי Google (אורחים לא נכנסים)
+    match /leaderboard/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
     match /games/{gameId} {
       allow read: if request.auth != null;
       allow write: if false;

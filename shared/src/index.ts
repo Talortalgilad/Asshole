@@ -5,3 +5,5 @@ export * from './exchange';
 export * from './view';
 export * from './bot';
 export * from './profile';
+export * from './ranks';
+export * from './scoring';

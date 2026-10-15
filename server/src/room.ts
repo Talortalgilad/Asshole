@@ -1,8 +1,10 @@
 import {
   applyAutoExchange, applyChoices, applyPass, applyPlay, autoMove, chooseBotAction, chooseBotExchange, computeExchange,
-  deal, lowestCards, sortHand, startGame, titlesForOrder, viewFor,
+  deal, lowestCards, rankIndex, scoreGame, sortHand, startGame, titlesForOrder, viewFor,
   type Card, type ExchangePlan, type ExchangeView, type GameEvent, type GameState, type SeatInfo, type Title,
 } from '@asshole/shared';
+
+import type { GameOutcome, GameRecord } from './users';
 
 export type Send = (uid: string, event: string, payload: unknown) => void;
 
@@ -29,12 +31,16 @@ export type RoomOptions = {
   send: Send;
   /** השולחן נסגר (אף אדם לא נשאר בו) */
   onClose?: (room: GameRoom) => void;
+  /** משחק הסתיים: שומר ניקוד ומחזיר את התוצאה לכל שחקן אנושי (בלי זה אין ניקוד, למשל במצב פיתוח) */
+  onGameEnd?: (g: GameRecord) => Promise<Record<string, GameOutcome>>;
   /** משהו שמשפיע על רשימת השולחנות בלובי השתנה */
   onChange?: (room: GameRoom) => void;
 };
 
 type Member = {
   uid: string; name: string; isBot: boolean; sockets: Set<string>; photoURL?: string; isGuest?: boolean;
+  /** סך נקודות (לדרגה שמוצגת ליד השם) */
+  points?: number;
   /** שחקן אנושי שיצא/נותק, ובוט ממשיך במושב שלו */
   replaced?: boolean;
 };
@@ -76,6 +82,8 @@ export class GameRoom {
   private graceTimers = new Map<string, NodeJS.Timeout>();
   /** מי שיצא באמצע משחק (לפי סדר היציאה), לדירוג אחרון */
   private leavers: string[] = [];
+  /** מי שהשתתף במשחק הנוכחי (בהתחלה): לניקוד. כולל מי שיצא ובוט החליף אותו. */
+  private gameHumans: { uid: string; isGuest: boolean }[] = [];
   private handNumber = 0;
   private botCounter = 0;
   private closed = false;
@@ -115,7 +123,7 @@ export class GameRoom {
   // ---------- חדר המתנה ----------
 
   /** @returns הודעת שגיאה, או null אם הצליח */
-  join(uid: string, name: string, socketId: string, photoURL = '', isGuest = false): string | null {
+  join(uid: string, name: string, socketId: string, photoURL = '', isGuest = false, points = 0): string | null {
     if (this.closed) return 'השולחן נסגר';
     let m = this.members.get(uid);
     if (m?.replaced) return 'הוחלפת בבוט במשחק הזה';
@@ -123,13 +131,14 @@ export class GameRoom {
       if (this.state || this.ex) return 'המשחק כבר התחיל';
       const seat = this.seats.indexOf(null);
       if (seat < 0) return 'השולחן מלא';
-      m = { uid, name, isBot: false, sockets: new Set(), photoURL, isGuest };
+      m = { uid, name, isBot: false, sockets: new Set(), photoURL, isGuest, points };
       this.members.set(uid, m);
       this.seats[seat] = uid;
     }
     m.name = name || m.name;
     m.photoURL = photoURL || m.photoURL;
     m.isGuest = isGuest;
+    m.points = points;
     m.sockets.add(socketId);
     this.clearGrace(uid); // חזר בתוך זמן החסד
     if (!this.hostId || !this.members.has(this.hostId) || this.members.get(this.hostId)!.isBot) this.hostId = uid;
@@ -356,7 +365,7 @@ export class GameRoom {
 
   private seatInfo(): Record<string, SeatInfo> {
     return Object.fromEntries(
-      [...this.members].map(([uid, m]) => [uid, { name: this.displayName(m), connected: m.isBot || m.sockets.size > 0, isBot: m.isBot, isGuest: !!m.isGuest }]),
+      [...this.members].map(([uid, m]) => [uid, { name: this.displayName(m), connected: m.isBot || m.sockets.size > 0, isBot: m.isBot, isGuest: !!m.isGuest, points: m.replaced ? undefined : m.points ?? 0 }]),
     );
   }
 
@@ -378,6 +387,7 @@ export class GameRoom {
 
   private beginPlaying(hands: Record<string, Card[]>, previousTitles: Record<string, Title> | null) {
     const seats = this.seats.filter((s): s is string => s !== null);
+    this.gameHumans = this.humans().map((h) => ({ uid: h.uid, isGuest: !!h.isGuest }));
     this.state = startGame({ tableId: this.tableId, seats, hands, previousTitles, handNumber: this.handNumber });
     this.publish();
     this.armTimer();
@@ -519,8 +529,33 @@ export class GameRoom {
         };
       });
       this.broadcast('game:over', { results });
+      this.scoreFinishedGame(order);
       this.changed();
     } else this.armTimer();
+  }
+
+  /** ניקוד (סעיפים 12/14): שמירה ב-store, ואז תוצאה אישית לכל שחקן אנושי (כולל מי שיצא) */
+  private scoreFinishedGame(order: string[]) {
+    const onEnd = this.opts.onGameEnd;
+    if (!onEnd) return;
+    const rows = scoreGame(order, this.gameHumans);
+    const people: GameRecord['people'] = {};
+    for (const h of this.gameHumans) {
+      const m = this.members.get(h.uid);
+      people[h.uid] = { username: m?.name ?? h.uid, photoURL: m?.photoURL ?? '' };
+    }
+    const record: GameRecord = {
+      gameId: `${this.tableId}-${this.handNumber}-${Date.now()}`, tableId: this.tableId, playerCount: order.length,
+      finishedAt: Date.now(), rows, people,
+    };
+    onEnd(record).then((outcomes) => {
+      for (const [uid, o] of Object.entries(outcomes)) {
+        const m = this.members.get(uid);
+        if (o.stats && m) m.points = o.stats.points;
+        this.opts.send(uid, 'game:scored', o);
+      }
+      this.publish();
+    }).catch((e) => console.error('[db] ניקוד נכשל:', (e as Error).message));
   }
 
   private disarm() {
@@ -592,7 +627,7 @@ export class GameRoom {
       hostId: this.hostId,
       seats: this.seats.map((uid) => {
         const m = uid ? this.members.get(uid) : null;
-        return m ? { uid: m.uid, name: this.displayName(m), isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '', isGuest: !!m.isGuest } : null;
+        return m ? { uid: m.uid, name: this.displayName(m), isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '', isGuest: !!m.isGuest, rank: m.isBot ? null : rankIndex(m.points ?? 0) } : null;
       }),
     });
     if (this.ex) this.publishExchange();
