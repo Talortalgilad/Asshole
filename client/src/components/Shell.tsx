@@ -132,8 +132,13 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
   // יציאה מדף השולחן (אחורה בדפדפן, תפריט) כשלא באמצע משחק: המושב מתפנה מיד.
   // דחייה קצרה כדי ש-StrictMode / ניווט פנימי לא יוציאו בטעות
   const onTableRoute = loc.pathname.startsWith('/table/');
+  // רק מי שבאמת היה בדף השולחן במושב הזה יוצא אוטומטית. מי ש"חובר מחדש" בשקט (טלפון נוסף עם אותו חשבון,
+  // רענון בדף אחר) לא ביקש לשבת ולא יכול להוציא את כולם מהשולחן.
+  const visitedTable = useRef(false);
+  if (!seated) visitedTable.current = false;
+  else if (onTableRoute) visitedTable.current = true;
   useEffect(() => {
-    if (onTableRoute || !seated || inGame || c.leaving) return;
+    if (onTableRoute || !seated || inGame || c.leaving || !visitedTable.current) return;
     const t = setTimeout(() => void c.actions.leaveTable('auto:not-on-table-route'), 200);
     return () => clearTimeout(t);
   }, [onTableRoute, seated, inGame, c.leaving, c.actions]);
@@ -141,7 +146,7 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
   // רענון: השרת מחבר אותי מחדש לשולחן שלי (בלי שביקשתי), אז חוזרים אליו.
   // רק במקרה הזה: אחרת הניווט הזה מתנגש עם הניווט של "צור/הצטרף" ומכפיל רשומה בהיסטוריה.
   useEffect(() => {
-    if (c.resumeTableId && !c.leaving && (loc.pathname === '/lobby' || loc.pathname === '/')) {
+    if (c.resumeTableId && !c.leaving && (loc.pathname === '/lobby' || loc.pathname === '/' || loc.pathname.startsWith('/join/'))) {
       nav(`/table/${c.resumeTableId}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

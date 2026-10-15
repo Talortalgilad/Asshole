@@ -57,6 +57,16 @@ try {
   assert.ok(onTable(), 'ביטול האישור הוציא מהשולחן');
   assert.equal(await p.locator('text=לצאת ולסגור את השולחן?').count(), 0);
 
+  step('מכשיר נוסף עם אותו חשבון נכנס לדף אחר (פרופיל): לא מוציא את המארח מהשולחן');
+  const uid = await p.evaluate(() => sessionStorage.getItem('uid'));
+  const ctx2 = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+  await ctx2.addInitScript((u) => sessionStorage.setItem('uid', u), uid);
+  const p2 = await ctx2.newPage();
+  await p2.goto(`${base}/profile?name=Mobile1`);
+  await p2.waitForTimeout(3000);
+  assert.ok(onTable(), 'מכשיר נוסף עם אותו חשבון הוציא את המארח מהשולחן');
+  await ctx2.close();
+
   step('הוספת 3 בוטים');
   for (let i = 0; i < 3; i++) {
     await p.locator('button:has-text("הוסף מחשב")').first().tap();
