@@ -4,7 +4,7 @@
 1. **Authentication → Sign-in method:** להפעיל Google.
 2. **Authentication → Settings → Authorized domains:** להוסיף את הדומיין של Railway (למשל `xxx.up.railway.app`). `localhost` כבר קיים.
 3. **Firestore Database:** ליצור (Production mode).
-4. **Rules:** להדביק את `firestore.rules` ב-Firestore → Rules → Publish
+4. **Rules:** להדביק את `firestore.rules` ב-Firestore → Rules → Publish (**לפרסם מחדש אחרי כל עדכון של הקובץ**: נוספה הקולקציה `leaderboard`)
    (או: `npx firebase-tools deploy --only firestore:rules --project asshole-720d9`).
 5. **Service account (סוד!):** Project settings → Service accounts → Generate new private key.
    את הקובץ שומרים כמשתנה ב-Railway, לא ב-git ולא בצ'אט.
@@ -49,3 +49,9 @@
 - **איך משחררים את השולחן:** המארח לוחץ בסוף המשחק "חזרה לחדר ההמתנה". אם אף אדם לא מחובר 60 שניות, השולחן מתאפס לבד. אם נשאר טאב ישן פתוח של המארח, סוגרים אותו.
 - **דף בדיקה ל-Error Boundary:** `/?preview=crash` מציג את מסך ההתרסקות.
 - **בלוג Railway:** `[db] טעינת פרופיל נכשלה` או `[db] שמירת שם משתמש נכשלה` = בעיה ב-Firestore (למשל `5 NOT_FOUND` – לא נוצר Firestore Database; `7 PERMISSION_DENIED` – הרשאות ה-service account).
+
+
+## ניקוד וטבלת אלופים
+- הניקוד נכתב מהשרת ל-Firestore (`users`, `leaderboard`, `monthlyStats`, `games`). בלי Firestore אמיתי לא יהיה ניקוד.
+- לבדיקה מקומית בלי Firebase: `DEV_SCORING=1 npm run dev` (ו-`?name=דנה&guest=1` מדמה אורח).
+- אם הטבלה ריקה אחרי משחק: בדקו בלוג `[db] שמירת ניקוד נכשלה`, ושהכללים פורסמו.

@@ -78,7 +78,7 @@ export function GameScreen() {
         </div>
         {myTurn && view.turnDeadline ? <div className="px-4"><TimerBar deadline={view.turnDeadline} /></div> : <div className="h-1" />}
         <div className="min-h-5 px-4 text-center text-sm font-bold" style={{ color: c.error ? 'var(--magenta)' : 'var(--text-dim)', fontFamily: 'var(--font-he)' }} aria-live="polite">{c.error ?? hint}</div>
-        <Hand hand={view.hand} selected={selected} playable={playable} onToggle={toggle} />
+        <Hand hand={view.hand} selected={selected} playable={playable} deck={me.deck} onToggle={toggle} />
         <div className="flex gap-3 px-4 pt-2">
           <div className="flex-[2]"><NeonButton disabled={!myTurn || !check.ok} onClick={play}>שים</NeonButton></div>
           <div className="flex-1"><NeonButton tone="dim" disabled={!canPass} onClick={c.actions.pass}>פס</NeonButton></div>
@@ -88,7 +88,7 @@ export function GameScreen() {
       {view.phase === 'finished' && c.results && (
         <FinishScreen
           results={c.results} uid={view.me} isHost={isHost} outcome={c.scored} isGuest={!!c.profile?.profile?.isGuest}
-          onAgain={c.actions.again} onWaiting={c.actions.backToWaiting} onExit={() => guard.go('/lobby')}
+          onUseDeck={c.actions.setDeck} onAgain={c.actions.again} onWaiting={c.actions.backToWaiting} onExit={() => guard.go('/lobby')}
         />
       )}
     </div>

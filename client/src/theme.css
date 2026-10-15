@@ -179,10 +179,10 @@
   line-height: 1;
   color: var(--c);
   border-radius: calc(var(--w) * .13);
-  border: calc(var(--w) * .03) solid color-mix(in srgb, var(--c) 45%, var(--bg-1));
+  border: calc(var(--w) * .03) solid var(--edge, color-mix(in srgb, var(--c) 45%, var(--bg-1)));
   background:
     radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--c) 6%, transparent), transparent 62%),
-    linear-gradient(165deg, #15112f 0%, #0a0918 100%);
+    linear-gradient(165deg, var(--face-a, #15112f) 0%, var(--face-b, #0a0918) 100%);
   box-shadow:
     0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 30%, transparent),
     inset 0 0 calc(var(--w) * .1 * var(--glow)) color-mix(in srgb, var(--c) 10%, transparent);
@@ -227,10 +227,14 @@
 
 .ncard.back {
   --c: var(--cyan);
-  border-color: color-mix(in srgb, var(--cyan) 40%, var(--bg-1));
-  background: linear-gradient(165deg, #120d2a, #080714);
+  border-color: var(--back-edge, color-mix(in srgb, var(--cyan) 40%, var(--bg-1)));
+  background: linear-gradient(165deg, var(--back-bg-a, #120d2a), var(--back-bg-b, #080714));
   overflow: hidden;
 }
+.ncard.back .bk-a { stroke: var(--back-a, #00f0ff); }
+.ncard.back .bk-af { fill: var(--back-a, #00f0ff); }
+.ncard.back .bk-b { stroke: var(--back-b, #9fb0d4); }
+.ncard.back .bk-bf { fill: var(--back-b, #9fb0d4); }
 .ncard.back svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 @keyframes card-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
@@ -357,3 +361,63 @@
   .flash-layer { display: none; }
   .timer-bar > i { transition: none; }
 }
+
+
+/* ======================================================================
+   חבילות קלפים: כל חבילה משנה רק משתנים (פנים, מסגרת, צבעי צורות וגב)
+   ====================================================================== */
+.ncard.deck-classic {
+  --face-a: #f6f1e6; --face-b: #e6dfcd; --edge: #b9b09a;
+  --back-edge: #0e2250; --back-bg-a: #1d3f82; --back-bg-b: #122a5c; --back-a: #9bbcff; --back-b: #dbe6ff;
+}
+.ncard.deck-classic.suit-H, .ncard.deck-classic.suit-D { --c: #c4283c; }
+.ncard.deck-classic.suit-C, .ncard.deck-classic.suit-S { --c: #1b2030; }
+.ncard.deck-classic { box-shadow: 0 1px calc(var(--w) * .08) rgba(0,0,0,.5); }
+
+.ncard.deck-minimal {
+  --face-a: #101216; --face-b: #0a0b0e; --edge: #3a3f4a;
+  --back-edge: #3a3f4a; --back-bg-a: #14161b; --back-bg-b: #0c0d11; --back-a: #6b7280; --back-b: #4b5160;
+}
+.ncard.deck-minimal.suit-H, .ncard.deck-minimal.suit-D { --c: #f2b8b8; }
+.ncard.deck-minimal.suit-C, .ncard.deck-minimal.suit-S { --c: #f1f3f6; }
+.ncard.deck-minimal { box-shadow: none; }
+
+.ncard.deck-gold {
+  --face-a: #1c1508; --face-b: #0f0b04; --edge: #b8860b;
+  --back-edge: #d4af37; --back-bg-a: #2a1d08; --back-bg-b: #140e04; --back-a: #d4af37; --back-b: #8a6a1d;
+}
+.ncard.deck-gold.suit-H, .ncard.deck-gold.suit-D { --c: #ff9d5c; }
+.ncard.deck-gold.suit-C, .ncard.deck-gold.suit-S { --c: #ffd76a; }
+
+.ncard.deck-galaxy {
+  --face-a: #150b36; --face-b: #07051a; --edge: #6a5acd;
+  --back-edge: #7a6af0; --back-bg-a: #1b0f4a; --back-bg-b: #080520; --back-a: #9a8cff; --back-b: #ff8fd8;
+}
+.ncard.deck-galaxy.suit-H, .ncard.deck-galaxy.suit-D { --c: #ff8fd8; }
+.ncard.deck-galaxy.suit-C, .ncard.deck-galaxy.suit-S { --c: #9fbcff; }
+
+.ncard.deck-crystal {
+  --face-a: #0e2330; --face-b: #07131b; --edge: #7fe3f2;
+  --back-edge: #a8f0ff; --back-bg-a: #0f3040; --back-bg-b: #08161e; --back-a: #a8f0ff; --back-b: #e6fbff;
+}
+.ncard.deck-crystal.suit-H, .ncard.deck-crystal.suit-D { --c: #ff9bb0; }
+.ncard.deck-crystal.suit-C, .ncard.deck-crystal.suit-S { --c: #b6f6ff; }
+
+.ncard.deck-ember {
+  --face-a: #24100a; --face-b: #130603; --edge: #c2410c;
+  --back-edge: #f97316; --back-bg-a: #2e1209; --back-bg-b: #150603; --back-a: #f97316; --back-b: #fbbf24;
+}
+.ncard.deck-ember.suit-H, .ncard.deck-ember.suit-D { --c: #ff6a3d; }
+.ncard.deck-ember.suit-C, .ncard.deck-ember.suit-S { --c: #ffb347; }
+
+.ncard.deck-royal {
+  --face-a: #1a0f2a; --face-b: #0b0614; --edge: #d4af37;
+  --back-edge: #d4af37; --back-bg-a: #2a1245; --back-bg-b: #0f0620; --back-a: #d4af37; --back-b: #b48cff;
+}
+.ncard.deck-royal.suit-H, .ncard.deck-royal.suit-D { --c: #ff5a7a; }
+.ncard.deck-royal.suit-C, .ncard.deck-royal.suit-S { --c: #f3e3a1; }
+
+/* פתיחת חבילה: הקלף מתהפך מהגב אל הפנים */
+@keyframes deck-flip { 0% { transform: rotateY(180deg) scale(.85); opacity: 0; } 55% { opacity: 1; } 100% { transform: rotateY(0) scale(1); } }
+.deck-flip { animation: deck-flip .9s cubic-bezier(.2,.8,.2,1) both; transform-style: preserve-3d; }
+@media (prefers-reduced-motion: reduce) { .deck-flip { animation: none !important; } }

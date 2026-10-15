@@ -6,6 +6,8 @@ import { NeonCard } from './NeonCard';
 const COUNT_LABEL: Record<number, string> = { 1: 'בודד', 2: 'זוג', 3: 'שלשה', 4: 'רביעייה' };
 
 export function TableCenter({ view, closing }: { view: GameView; closing: CenterPlay }) {
+  // הקלפים שכל שחקן שם מוצגים בחבילה שלו, אצל כולם
+  const deckOf = (id: string) => view.seats.find((s) => s.id === id)?.deck ?? 'neon';
   const plays = view.trick.plays;
   const recent = plays.slice(-3).reverse(); // החדש ראשון
   const t = view.trick;
@@ -25,7 +27,7 @@ export function TableCenter({ view, closing }: { view: GameView; closing: Center
           {recent.map((p, i) => (
             <div key={`${plays.length - i}-${p.playerId}`} className={`flex flex-col items-center gap-1.5 ${i === 0 ? 'anim-pop' : 'scale-75 opacity-45'}`}>
               <div dir="ltr" className="flex">
-                {p.cards.map((c, k) => <NeonCard key={c.id} card={c} size={i === 0 ? 'lg' : 'md'} className={k ? '-ms-5' : ''} />)}
+                {p.cards.map((c, k) => <NeonCard key={c.id} card={c} deck={deckOf(p.playerId)} size={i === 0 ? 'lg' : 'md'} className={k ? '-ms-5' : ''} />)}
               </div>
               <span className="max-w-24 truncate text-xs font-bold" style={{ fontFamily: 'var(--font-he)', color: 'var(--text-dim)' }}>{nameOf(view, p.playerId)}</span>
             </div>
@@ -34,7 +36,7 @@ export function TableCenter({ view, closing }: { view: GameView; closing: Center
       ) : closing ? (
         <div className="anim-fadeout flex flex-col items-center gap-1.5">
           <div dir="ltr" className="flex">
-            {closing.cards.map((c, k) => <NeonCard key={c.id} card={c} size="lg" className={k ? '-ms-5' : ''} />)}
+            {closing.cards.map((c, k) => <NeonCard key={c.id} card={c} deck={deckOf(closing.playerId)} size="lg" className={k ? '-ms-5' : ''} />)}
           </div>
           <span className="text-xs font-bold" style={{ fontFamily: 'var(--font-he)', color: 'var(--text-dim)' }}>{nameOf(view, closing.playerId)}</span>
         </div>

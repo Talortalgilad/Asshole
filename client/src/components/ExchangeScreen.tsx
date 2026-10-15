@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { TITLE_LABEL, type Card, type ExchangeView } from '@asshole/shared';
+import { TITLE_LABEL, type Card, type DeckId, type ExchangeView } from '@asshole/shared';
 import { useClient } from '../lib/client';
 import { NeonButton } from './NeonButton';
 import { NeonCard } from './NeonCard';
 import { Panel, Seconds, TimerBar } from './ui';
 
-const Row = ({ label, cards, tone }: { label: string; cards: Card[]; tone?: 'taken' | 'got' }) => (
+const Row = ({ label, cards, tone, deck }: { label: string; cards: Card[]; tone?: 'taken' | 'got'; deck: DeckId }) => (
   cards.length === 0 ? null : (
     <div className="flex flex-col items-center gap-2">
       <div className={`label-dim ${tone === 'taken' ? 't-magenta' : tone === 'got' ? 't-cyan' : ''}`}>{label}</div>
-      <div dir="ltr" className="flex gap-2">{cards.map((c) => <NeonCard key={c.id} card={c} size="lg" />)}</div>
+      <div dir="ltr" className="flex gap-2">{cards.map((c) => <NeonCard key={c.id} card={c} deck={deck} size="lg" />)}</div>
     </div>
   )
 );
@@ -23,6 +23,7 @@ export function ExchangeScreen({ view }: { view: ExchangeView }) {
   const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < view.give ? [...s, id] : s));
   const receivedIds = new Set(view.received.map((x) => x.id));
   const role = TITLE_LABEL[view.role];
+  const deck = c.profile?.profile?.deck ?? 'neon';
 
   const headline =
     view.stage === 'review' ? 'ההחלפה הסתיימה. המשחק מתחיל…'
@@ -49,9 +50,9 @@ export function ExchangeScreen({ view }: { view: ExchangeView }) {
       <Panel tone={choosing ? 'cyan' : 'dim'}>
         <p className="text-center font-extrabold" style={{ fontFamily: 'var(--font-he)' }} aria-live="polite">{headline}</p>
         <div className="mt-4 flex flex-col gap-4">
-          <Row label="נלקחו ממך (הקלפים הכי טובים)" cards={view.taken} tone="taken" />
-          <Row label="קיבלת" cards={view.received} tone="got" />
-          {view.stage === 'review' && <Row label="החזרת" cards={view.gave} />}
+          <Row label="נלקחו ממך (הקלפים הכי טובים)" cards={view.taken} tone="taken" deck={deck} />
+          <Row label="קיבלת" cards={view.received} tone="got" deck={deck} />
+          {view.stage === 'review' && <Row label="החזרת" cards={view.gave} deck={deck} />}
         </div>
       </Panel>
 
@@ -60,7 +61,7 @@ export function ExchangeScreen({ view }: { view: ExchangeView }) {
         <div dir="ltr" className="flex flex-wrap items-end justify-center gap-x-1 gap-y-3 px-1 pt-3">
           {view.hand.map((card) => (
             <NeonCard
-              key={card.id} card={card} size="md"
+              key={card.id} card={card} deck={deck} size="md"
               selected={sel.includes(card.id) || (!!view.chosen && view.chosen.includes(card.id) && view.stage === 'choose')}
               onClick={choosing ? () => toggle(card.id) : undefined}
               className={receivedIds.has(card.id) && view.stage === 'choose' ? 'received' : ''}

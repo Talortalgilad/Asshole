@@ -36,6 +36,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [deckError, setDeckError] = useState<string | null>(null);
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [tableId, setTableId] = useState<string | null>(null);
   /** שולחן שהשרת חיבר אותי אליו בלי שביקשתי (רענון/חיבור מחדש) */
@@ -71,7 +72,8 @@ function useClientState(getAuth: AuthPayload, key: string) {
     socket.on('connect', () => { setConnected(true); setConnectError(null); });
     socket.on('disconnect', () => setConnected(false));
     socket.on('connect_error', (e: Error) => { setConnected(false); setConnectError(e.message); });
-    socket.on('profile:state', (p: ProfileState) => { setProfile(p); setProfileError(null); });
+    socket.on('profile:state', (p: ProfileState) => { setProfile(p); setProfileError(null); setDeckError(null); });
+    socket.on('deck:error', (e: { message: string }) => setDeckError(e.message));
     socket.on('profile:error', (e: { message: string }) => setProfileError(e.message));
     socket.on('lobby:state', (l: LobbyState) => setLobby(l));
 
@@ -149,6 +151,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
 
   const actions = {
     setUsername: (username: string) => emit('profile:set', { username }),
+    setDeck: (deck: string) => { setDeckError(null); emit('deck:set', { deck }); },
     lobbyJoin: () => emit('lobby:join'),
     lobbyLeave: () => emit('lobby:leave'),
     createTable: (o: { maxPlayers: 4 | 5; isPrivate: boolean; name: string }) => request('table:create', o),
@@ -173,7 +176,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   };
 
   return {
-    connected, connectError, profile, profileError, lobby, tableId, resumeTableId, table, view, exchange, results, scored, leaderboard,
+    connected, connectError, profile, profileError, deckError, lobby, tableId, resumeTableId, table, view, exchange, results, scored, leaderboard,
     banners, log, error, notice, closingPlay, leaving, actions,
     clearNotice: () => setNotice(null),
   };

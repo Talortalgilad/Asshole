@@ -23,7 +23,7 @@ export function Seat({ seat, isTurn, passed, deadline }: Props) {
       ) : (
         <div className="flex items-center gap-1.5" aria-label={`${seat.cardCount} קלפים`}>
           <div dir="ltr" className="flex">
-            {Array.from({ length: Math.min(seat.cardCount, 3) }, (_, i) => <NeonCard key={i} faceDown size="xs" className={i ? '-ms-3' : ''} />)}
+            {Array.from({ length: Math.min(seat.cardCount, 3) }, (_, i) => <NeonCard key={i} faceDown deck={seat.deck} size="xs" className={i ? '-ms-3' : ''} />)}
           </div>
           <span className="text-lg font-black tabular-nums">{seat.cardCount}</span>
         </div>

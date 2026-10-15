@@ -13,6 +13,7 @@ import { LoginScreen } from './LoginScreen';
 import { NameScreen } from './NameScreen';
 import { NeonScreen } from './NeonBackground';
 import { UsernameScreen } from './UsernameScreen';
+import { FirstDeckPicker } from './DecksPanel';
 import { Waiting } from './Waiting';
 
 // מצב פיתוח (?dev או ?name=...): uid לכל טאב, בלי Google. עובד רק כשהשרת עצמו במצב פיתוח.
@@ -183,6 +184,10 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
         serverError={c.profileError} onSubmit={c.actions.setUsername}
       />
     );
+  }
+  else if (c.profile.profile.deck === null && !c.profile.dev) {
+    // בהתחלה: בחירת חבילת קלפים (פעם אחת)
+    body = <FirstDeckPicker error={c.deckError} onPick={c.actions.setDeck} onSkip={() => c.actions.setDeck('neon')} />;
   }
   const ready = !body;
 

@@ -43,6 +43,7 @@ export function AppBar() {
     : onTable ? (c.table ? (PHASE_TITLE[c.table.phase] ?? c.table.name) : 'שולחן')
     : p.startsWith('/profile') ? 'פרופיל'
     : p.startsWith('/leaderboard') ? 'טבלת אלופים'
+    : p.startsWith('/decks') ? 'חבילות קלפים'
     : p.startsWith('/join') ? 'הצטרפות לשולחן' : '';
   const showBack = !p.startsWith('/lobby');
 
@@ -63,6 +64,7 @@ export function AppBar() {
       {open && (
         <div className="menu-pop" role="menu">
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/profile')}>👤 פרופיל</button>
+          <button className="menu-item" role="menuitem" onClick={() => guard.go('/decks')}>🃏 חבילות קלפים</button>
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/leaderboard')}>🏆 טבלת אלופים</button>
           {!session.dev && <button className="menu-item danger" role="menuitem" onClick={() => { setOpen(false); guard.requestSignOut(); }}>⏻ התנתקות</button>}
         </div>

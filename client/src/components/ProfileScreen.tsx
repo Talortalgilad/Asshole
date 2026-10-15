@@ -3,7 +3,7 @@ import type { Profile } from '@asshole/shared';
 import { UsernameScreen } from './UsernameScreen';
 import { linkGuestWithGoogle } from '../lib/firebase';
 import { describeAuthError, withTimeout } from '../lib/authErrors';
-import { rankIndex } from '@asshole/shared';
+import { DEFAULT_DECK, deckInfo, rankIndex } from '@asshole/shared';
 import { Avatar, GuestTag, Mixed, Panel, RankChip, RankProgress } from './ui';
 import { NeonButton } from './NeonButton';
 
@@ -14,9 +14,10 @@ type Props = {
   onRename: (name: string) => void;
   onSignOut: () => void;
   onLinked: (r: 'linked' | 'switched') => void;
+  onDecks: () => void;
 };
 
-export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLinked }: Props) {
+export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLinked, onDecks }: Props) {
   const [editing, setEditing] = useState(false);
   const [linking, setLinking] = useState(false);
   const [linkErr, setLinkErr] = useState('');
@@ -82,6 +83,7 @@ export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLink
             {linkErr && <p className="t-magenta text-center text-sm font-bold" dir="auto" role="alert"><Mixed>{linkErr}</Mixed></p>}
           </>
         )}
+        <NeonButton small tone="dim" onClick={onDecks}>🃏 חבילת קלפים: {deckInfo(profile.deck ?? DEFAULT_DECK).label}</NeonButton>
         {!dev && <NeonButton small tone="dim" onClick={() => setEditing(true)}>שנה שם משתמש</NeonButton>}
         {!dev && <NeonButton small tone="magenta" onClick={onSignOut}>התנתק</NeonButton>}
       </div>

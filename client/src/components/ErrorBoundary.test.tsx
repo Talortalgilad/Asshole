@@ -44,3 +44,22 @@ describe('Waiting', () => {
     expect(html).toContain('התנתק');
   });
 });
+
+import { DecksPanel } from './DecksPanel';
+
+describe('DecksPanel', () => {
+  it('נעילה לפי נקודות: פתוחות בלי מנעול, נעולות עם סף, והנבחרת מסומנת', () => {
+    const html = renderToStaticMarkup(<DecksPanel points={35} current="classic" onPick={() => {}} />);
+    expect(html).toContain('✓ נבחרה');
+    expect(html).toContain('🔒 60 נק'); // קריסטל
+    expect(html).toContain('🔒 100 נק');
+    expect(html).not.toContain('🔒 10 נק');
+    expect(html).not.toContain('🔒 30 נק');
+    expect(html).toContain('החבילה הבאה');
+  });
+  it('בדרגה הגבוהה ביותר אין מנעולים ואין "החבילה הבאה"', () => {
+    const html = renderToStaticMarkup(<DecksPanel points={500} current="royal" onPick={() => {}} />);
+    expect(html).not.toContain('🔒');
+    expect(html).not.toContain('החבילה הבאה');
+  });
+});

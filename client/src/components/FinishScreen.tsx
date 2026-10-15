@@ -1,4 +1,5 @@
-import { TITLE_LABEL, rankInfo, type GameOutcome, type Title } from '@asshole/shared';
+import { TITLE_LABEL, deckInfo, newlyUnlocked, rankInfo, type DeckId, type GameOutcome, type Title } from '@asshole/shared';
+import { NeonCard } from './NeonCard';
 import type { GameResult } from '../lib/client';
 import { Panel } from './ui';
 import { NeonButton } from './NeonButton';
@@ -7,7 +8,7 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 
 type Props = {
   results: GameResult[]; uid: string; isHost: boolean; outcome: GameOutcome | null; isGuest: boolean;
-  onAgain(): void; onWaiting(): void; onExit(): void;
+  onAgain(): void; onWaiting(): void; onExit(): void; onUseDeck(deck: DeckId): void;
 };
 
 const REASON: Record<string, string> = {
@@ -37,7 +38,23 @@ function Scoring({ outcome, isGuest }: { outcome: GameOutcome; isGuest: boolean 
   );
 }
 
-export function FinishScreen({ results, uid, isHost, outcome, isGuest, onAgain, onWaiting, onExit }: Props) {
+/** פתיחת חבילה: הקלף מתהפך ומראה את העיצוב שנפתח */
+function UnlockReveal({ deck, onUse }: { deck: DeckId; onUse(): void }) {
+  const info = deckInfo(deck);
+  return (
+    <div className="flex flex-col items-center gap-2 rounded p-3 text-center" style={{ border: '1px solid color-mix(in srgb, var(--cyan) 45%, transparent)', background: 'color-mix(in srgb, var(--cyan) 6%, transparent)' }} role="status">
+      <div className="t-cyan font-extrabold" style={{ fontFamily: 'var(--font-he)' }}>🎁 נפתחה חבילה חדשה: {info.label}</div>
+      <div dir="ltr" className="deck-flip flex" aria-hidden="true">
+        <NeonCard rank={14} suit="H" deck={deck} size="md" />
+        <NeonCard rank={13} suit="S" deck={deck} size="md" className="-ms-5" />
+      </div>
+      <button className="chip" style={{ cursor: 'pointer', padding: '.4rem .9rem' }} onClick={onUse}>השתמש בחבילה</button>
+    </div>
+  );
+}
+
+export function FinishScreen({ results, uid, isHost, outcome, isGuest, onAgain, onWaiting, onExit, onUseDeck }: Props) {
+  const unlocked = outcome?.counted && outcome.stats ? newlyUnlocked(outcome.stats.points - outcome.points, outcome.stats.points) : [];
   return (
     <div className="modal-backdrop" style={{ zIndex: 45, alignItems: 'flex-start', overflowY: 'auto' }}>
       <div className="anim-pop my-auto w-full max-w-sm">
@@ -55,6 +72,9 @@ export function FinishScreen({ results, uid, isHost, outcome, isGuest, onAgain, 
             ))}
           </ol>
           {outcome && <div className="mb-5"><Scoring outcome={outcome} isGuest={isGuest} /></div>}
+          {unlocked.length > 0 && (
+            <div className="mb-5 flex flex-col gap-2">{unlocked.map((d) => <UnlockReveal key={d.id} deck={d.id} onUse={() => onUseDeck(d.id)} />)}</div>
+          )}
           <div className="flex flex-col gap-3">
             {isHost ? (
               <>

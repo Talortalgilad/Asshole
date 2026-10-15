@@ -12,7 +12,7 @@ export function ProfilePage() {
   return (
     <ProfileScreen
       profile={me} dev={session.dev} error={c.profileError}
-      onRename={c.actions.setUsername} onSignOut={guard.requestSignOut} onLinked={session.relink}
+      onRename={c.actions.setUsername} onSignOut={guard.requestSignOut} onLinked={session.relink} onDecks={() => guard.go('/decks')}
     />
   );
 }

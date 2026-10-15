@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Rank, Suit } from '@asshole/shared';
+import { DECKS, type DeckId, type Rank, type Suit } from '@asshole/shared';
 import { NeonButton } from './NeonButton';
 import { NeonScreen } from './NeonBackground';
 import { NeonCard } from './NeonCard';
@@ -17,6 +17,7 @@ export function CardGallery() {
   const [cyan, setCyan] = useState('#00f0ff');
   const [magenta, setMagenta] = useState('#ff2bd6');
   const [sel, setSel] = useState<string | null>('14H');
+  const [deck, setDeck] = useState<DeckId>('neon');
 
   useEffect(() => { root.setProperty('--glow', String(glow)); }, [glow, root]);
   useEffect(() => { root.setProperty('--grid-opacity', String(grid)); }, [grid, root]);
@@ -38,6 +39,11 @@ export function CardGallery() {
         <h1 className="neon-title text-3xl">כיוונון עיצוב</h1>
 
         <div className="grid grid-cols-2 gap-3 text-sm" style={{ fontFamily: 'var(--font-he)' }}>
+          <label className="col-span-2 flex items-center gap-2">חבילה
+            <select className="neon-input" value={deck} onChange={(e) => setDeck(e.target.value as DeckId)}>
+              {DECKS.map((d) => <option key={d.id} value={d.id}>{d.label}{d.unlock ? ` (${d.unlock} נק')` : ''}</option>)}
+            </select>
+          </label>
           <label className="col-span-2 flex flex-col gap-1">
             עוצמת זוהר: {glow.toFixed(2)}
             <input type="range" min="0" max="1.8" step="0.05" value={glow} onChange={(e) => setGlow(+e.target.value)} />
@@ -56,24 +62,24 @@ export function CardGallery() {
           <Row key={s} label={`SUIT ${s}`}>
             {SHOW.map((r) => {
               const id = `${r}${s}`;
-              return <NeonCard key={id} rank={r} suit={s} selected={sel === id} onClick={() => setSel(sel === id ? null : id)} />;
+              return <NeonCard key={id} deck={deck} rank={r} suit={s} selected={sel === id} onClick={() => setSel(sel === id ? null : id)} />;
             })}
           </Row>
         ))}
 
         <Row label="STATES: NORMAL / SELECTED / NOT PLAYABLE / FACE DOWN / SIZES">
-          <NeonCard rank={12} suit="H" />
-          <NeonCard rank={12} suit="H" selected />
-          <NeonCard rank={12} suit="S" dim />
-          <NeonCard faceDown />
-          <NeonCard rank={9} suit="D" size="sm" />
-          <NeonCard rank={9} suit="C" size="lg" />
-          <NeonCard faceDown size="lg" />
+          <NeonCard deck={deck} rank={12} suit="H" />
+          <NeonCard deck={deck} rank={12} suit="H" selected />
+          <NeonCard deck={deck} rank={12} suit="S" dim />
+          <NeonCard deck={deck} faceDown />
+          <NeonCard deck={deck} rank={9} suit="D" size="sm" />
+          <NeonCard deck={deck} rank={9} suit="C" size="lg" />
+          <NeonCard deck={deck} faceDown size="lg" />
         </Row>
 
         <Row label="HAND (OVERLAP)">
           {([[3, 'C'], [3, 'H'], [3, 'S'], [8, 'D'], [10, 'H'], [14, 'S']] as [Rank, Suit][]).map(([r, s], i) => (
-            <NeonCard key={`${r}${s}`} rank={r} suit={s} size="lg" selected={i === 3} className={i ? '-ms-7' : ''} />
+            <NeonCard key={`${r}${s}`} deck={deck} rank={r} suit={s} size="lg" selected={i === 3} className={i ? '-ms-7' : ''} />
           ))}
         </Row>
 
