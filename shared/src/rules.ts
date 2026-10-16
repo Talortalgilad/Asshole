@@ -82,8 +82,9 @@ export function checkMove(cards: Card[], trick: TrickState, firstMove: boolean):
   // 4. 2 בודד חותך הכל
   if (rank === TWO && n === 1) return OK;
 
-  // 5. השלמה לרביעייה (חריגה מכלל הכמות)
-  if (rank === last.rank && trick.sameRankStreak + n === 4) return OK;
+  // 5. השלמה לרביעייה: החריגה היחידה מכלל הכמות היא קלף בודד שמשלים שלשה (SPEC 3.8).
+  // בכל מצב אחר חייבים את אותה כמות, למשל 4 ואז 4 בסרייה של קלפים בודדים: אי אפשר להשלים עם זוג.
+  if (rank === last.rank && n === 1 && trick.sameRankStreak === 3) return OK;
 
   // 6. כמות
   if (n !== trick.count) return bad(`חייבים לשים ${trick.count} קלפים`);

@@ -71,6 +71,38 @@ describe('מנוע חוקים', () => {
     expect(r.state.trick.plays).toHaveLength(0);
   });
 
+  it('3ב. סרייה של בודדים: 4, 4 (מדלג) – אי אפשר להשלים עם זוג 4, אבל בודד מותר', () => {
+    let s = mk(
+      { A: ['4C', '9H'], B: ['4D', '9D'], C: ['KC', 'KD'], D: ['4H', '4S', 'QC'] },
+      { count: 1, sameRankStreak: 1, plays: [play1(4, 'A', ['4C'])] },
+      { turn: 'B' },
+    );
+    s = play(s, 'B', '4D').state; // 4 על 4: C מדולג
+    expect(s.turn).toBe('D');
+    expect(validatePlay(s, 'D', cards('4H', '4S')).ok).toBe(false);
+    expect(validatePlay(s, 'D', cards('4H')).ok).toBe(true);
+  });
+
+  it('3ג. זוג 5 ואז זוג 5 משלים רביעייה (אותה כמות), ובודד לא מותר על זוג', () => {
+    const s = mk(
+      { B: ['5D', '5H', '9D'], C: ['5S', 'KC'] },
+      { count: 2, sameRankStreak: 2, plays: [play1(5, 'A', ['5C', '5S'])] },
+      { turn: 'B' },
+    );
+    expect(validatePlay(s, 'B', cards('5D')).ok).toBe(false);
+    expect(validatePlay(s, 'B', cards('5D', '5H')).ok).toBe(true);
+  });
+
+  it('3ד. שלשה על השולחן: קלף בודד שמשלים רביעייה מותר (החריגה היחידה)', () => {
+    const s = mk(
+      { B: ['8S', '9D'] },
+      { count: 3, sameRankStreak: 3, plays: [play1(8, 'A', ['8C', '8D', '8H'])] },
+      { turn: 'B' },
+    );
+    expect(validatePlay(s, 'B', cards('8S')).ok).toBe(true);
+    expect(validatePlay(s, 'B', cards('9D')).ok).toBe(false);
+  });
+
   it('4. 9 על 9 – השחקן הבא מדולג', () => {
     const s = mk(
       { B: ['9D', 'KC'] },
