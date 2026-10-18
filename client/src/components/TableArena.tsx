@@ -72,7 +72,9 @@ export function TableArena({ view, closing }: { view: GameView; closing: CenterP
 
   return (
     <div className="arena">
+     <div className="table-plane">
       <div className="felt" aria-hidden="true" />
+      <div className="felt-logo" aria-hidden="true">פריזידנט</div>
 
       {discarded > 0 && (
         <div className="discard" aria-hidden="true">
@@ -104,7 +106,7 @@ export function TableArena({ view, closing }: { view: GameView; closing: CenterP
           return (
             <div key={p.key} className={`pile-play ${newest && !collecting ? 'fresh' : ''} ${collecting ? 'collect' : ''}`} style={style}>
               <div dir="ltr" className="flex">
-                {p.cards.map((c, k) => <NeonCard key={c.id} card={c} deck={deckOf(p.playerId)} size="md" className={k ? '-ms-5' : ''} />)}
+                {p.cards.map((c, k) => <NeonCard key={c.id} card={c} deck={deckOf(p.playerId)} size="lg" className={k ? '-ms-8' : ''} />)}
               </div>
             </div>
           );
@@ -115,6 +117,7 @@ export function TableArena({ view, closing }: { view: GameView; closing: CenterP
           </div>
         )}
       </div>
+     </div>
 
       {(t.mustGoLower || flags.length > 0 || lastPlayer) && (
         <div className="arena-note">

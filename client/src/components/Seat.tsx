@@ -1,40 +1,45 @@
 import { TITLE_LABEL, type SeatView } from '@asshole/shared';
-import { BotTag, GuestTag, RankChip, Seconds, TimerBar } from './ui';
+import { Avatar, RankChip, Seconds, TimerBar } from './ui';
 import { NeonCard } from './NeonCard';
 
 type Props = { seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null };
 
+/** מושב ליד השולחן: אווטאר עגול על השוליים, מניפת קלפי גב מאחוריו, ושם. */
 export function Seat({ seat, isTurn, passed, deadline }: Props) {
   const out = seat.place !== null;
+  const fan = Math.min(seat.cardCount, 5);
+  const label = seat.isBot ? '🤖' : Array.from(seat.name)[0] ?? '?';
   return (
-    <div className={`row-card relative flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-2 text-center ${isTurn ? 'turn-ring' : ''}`}
-      style={{ opacity: seat.connected ? (out ? 0.7 : 1) : 0.5, background: isTurn ? 'color-mix(in srgb, var(--cyan) 8%, var(--bg-1))' : undefined }}>
-      <div className="flex max-w-full items-center justify-center gap-1" style={{ fontFamily: 'var(--font-he)' }}>
-        {seat.title === 'president' && <span className="crown" aria-label="פריזידנט">👑</span>}
-        <span className="truncate text-sm font-extrabold">{seat.name}</span>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-1">
-        <RankChip rank={seat.rank} compact />
-        {seat.title && <span className="chip ghost">{TITLE_LABEL[seat.title]}</span>}
-        {seat.isGuest && <GuestTag />}
-        {seat.isBot && !seat.name.includes('🤖') && <BotTag />}
-      </div>
-      {out ? (
-        <div className="t-cyan text-sm font-extrabold">מקום {seat.place}</div>
-      ) : (
-        <div className="flex items-center gap-1.5" aria-label={`${seat.cardCount} קלפים`}>
-          <div dir="ltr" className="flex">
-            {Array.from({ length: Math.min(seat.cardCount, 3) }, (_, i) => <NeonCard key={i} faceDown deck={seat.deck} size="xs" className={i ? '-ms-3' : ''} />)}
-          </div>
-          <span className="text-lg font-black tabular-nums">{seat.cardCount}</span>
+    <div className="seat" style={{ opacity: seat.connected ? (out ? 0.65 : 1) : 0.5 }}>
+      {!out && (
+        <div className="seat-fan" dir="ltr" aria-hidden="true">
+          {Array.from({ length: fan }, (_, i) => {
+            const t = fan === 1 ? 0 : i / (fan - 1) - 0.5; // -0.5..0.5
+            return (
+              <span key={i} style={{ transform: `translateX(${t * 22}px) rotate(${t * 34}deg)` }}>
+                <NeonCard faceDown deck={seat.deck} size="xs" />
+              </span>
+            );
+          })}
         </div>
       )}
-      <div className="flex h-5 items-center justify-center gap-1 text-xs" style={{ fontFamily: 'var(--font-he)' }}>
+      <div className={`seat-avatar ${isTurn ? 'turn-ring' : ''}`}>
+        <Avatar name={label} size={46} />
+        {!out && <span className="seat-count" aria-label={`${seat.cardCount} קלפים`}><bdi>{seat.cardCount}</bdi></span>}
+        {out && <span className="seat-count place"><bdi>{seat.place}</bdi></span>}
+      </div>
+      <div className="seat-name" style={{ fontFamily: 'var(--font-he)' }}>
+        {seat.title === 'president' && <span className="crown" aria-label="פריזידנט">👑</span>}
+        <span className="truncate">{seat.name}</span>
+      </div>
+      <div className="seat-meta">
+        {seat.title && <span className="chip ghost">{TITLE_LABEL[seat.title]}</span>}
+        <RankChip rank={seat.rank} compact />
         {!seat.connected && <span className="chip magenta">מנותק</span>}
         {passed && !out && <span className="chip dim">פס</span>}
         {isTurn && deadline && <Seconds deadline={deadline} />}
       </div>
-      {isTurn && deadline && <div className="absolute inset-x-1.5 bottom-0.5"><TimerBar deadline={deadline} /></div>}
+      {isTurn && deadline && <div className="seat-timer"><TimerBar deadline={deadline} /></div>}
     </div>
   );
 }

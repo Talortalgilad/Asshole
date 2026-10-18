@@ -7,13 +7,13 @@ export function Hand({ hand, selected, playable, deck, onToggle }: {
   hand: Card[]; selected: Set<string>; playable: Set<string> | null; deck: DeckId; onToggle: (id: string) => void;
 }) {
   return (
-    <div dir="ltr" className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-2 pt-4">
+    <div dir="ltr" className="hand flex flex-wrap items-end justify-center gap-x-1.5 gap-y-2 px-2 pt-3">
       {groupByRank(hand).map((g) => (
         <div key={g[0].rank} className="flex">
           {g.map((c, i) => (
             <NeonCard
               key={c.id} card={c} deck={deck} selected={selected.has(c.id)} dim={playable ? !playable.has(c.id) : false}
-              onClick={() => onToggle(c.id)} className={i > 0 ? '-ms-5' : ''}
+              onClick={() => onToggle(c.id)} className={i > 0 ? '-ms-4' : ''}
             />
           ))}
         </div>

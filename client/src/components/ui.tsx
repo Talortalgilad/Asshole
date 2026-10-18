@@ -28,7 +28,7 @@ export function Avatar({ url, name, size = 40 }: { url?: string; name: string; s
     <img src={url} alt="" referrerPolicy="no-referrer" className="shrink-0 rounded-full bg-black/40 object-cover" style={style} />
   ) : (
     <div className="flex shrink-0 items-center justify-center rounded-full font-extrabold" style={{ ...style, background: 'color-mix(in srgb, var(--violet) 70%, var(--bg-0))', fontSize: size * 0.42 }}>
-      {name.slice(0, 1)}
+      {Array.from(name)[0] ?? "?"}
     </div>
   );
 }
