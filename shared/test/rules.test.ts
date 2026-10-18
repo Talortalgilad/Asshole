@@ -103,6 +103,66 @@ describe('מנוע חוקים', () => {
     expect(validatePlay(s, 'B', cards('9D')).ok).toBe(false);
   });
 
+  it('3ה. סיבוב יחידים: ארבעה 4 בודדים ברצף סוגרים, ומי ששם את הרביעי פותח', () => {
+    let s = mk(
+      { A: ['4C', '9H', 'KH'], B: ['4D', '4S', '9D'], C: ['QC', 'QD'], D: ['4H', 'QH'] },
+      {},
+      { turn: 'A' },
+    );
+    s = play(s, 'A', '4C').state;
+    s = play(s, 'B', '4D').state; // 4 על 4: C מדולג
+    expect(s.turn).toBe('D');
+    s = play(s, 'D', '4H').state; // 4 על 4: A מדולג
+    expect(s.turn).toBe('B');
+    const r = play(s, 'B', '4S'); // הרביעי
+    expect(r.events.map((e) => e.type)).toContain('four');
+    expect(r.state.turn).toBe('B');
+    expect(r.state.trick.count).toBeNull();
+    expect(r.state.trick.plays).toHaveLength(0);
+  });
+
+  it('3ו. סיבוב יחידים: 9, ואז שלשה של 9 – נדחית', () => {
+    const s = mk(
+      { B: ['9D', '9H', '9S'] },
+      { count: 1, sameRankStreak: 1, plays: [play1(9, 'A', ['9C'])] },
+      { turn: 'B' },
+    );
+    expect(validatePlay(s, 'B', cards('9D', '9H', '9S')).ok).toBe(false);
+  });
+
+  it('3ז. סיבוב זוגות: זוג 8 ואחריו 8 בודד – נדחה', () => {
+    const s = mk(
+      { B: ['8S', '9D'] },
+      { count: 2, sameRankStreak: 2, plays: [play1(8, 'A', ['8C', '8D'])] },
+      { turn: 'B' },
+    );
+    expect(validatePlay(s, 'B', cards('8S')).ok).toBe(false);
+  });
+
+  it('3ח. אחרי 2 הסרייה סגורה: שחקן אחר לא יכול לשים 2 (לא התור שלו), והתור אצל מי ששם את ה-2', () => {
+    const s = mk(
+      { B: ['2C', '4D'], C: ['2D', 'KC'] },
+      { count: 1, sameRankStreak: 1, plays: [play1(9, 'A', ['9C'])] },
+      { turn: 'B' },
+    );
+    const r = play(s, 'B', '2C');
+    expect(r.state.turn).toBe('B');
+    expect(validatePlay(r.state, 'C', cards('2D')).ok).toBe(false);
+    expect(r.state.trick.plays).toHaveLength(0);
+  });
+
+  it('3ט. שחקן מסיים עם 2: הפתיחה עוברת לבא הפעיל', () => {
+    const s = mk(
+      { A: ['9C', 'KC'], B: ['2C'], C: ['QC', 'QD'], D: ['KD'] },
+      { count: 1, sameRankStreak: 1, plays: [play1(9, 'A', ['9C'])] },
+      { turn: 'B' },
+    );
+    const r = play(s, 'B', '2C');
+    expect(r.state.finishedOrder).toContain('B');
+    expect(r.state.turn).toBe('C');
+    expect(r.state.trick.count).toBeNull();
+  });
+
   it('4. 9 על 9 – השחקן הבא מדולג', () => {
     const s = mk(
       { B: ['9D', 'KC'] },
