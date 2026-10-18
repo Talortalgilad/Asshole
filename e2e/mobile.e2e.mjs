@@ -91,8 +91,8 @@ try {
   }));
   assert.deepEqual(names, ['none', 'none', 'none', 'none'], 'אנימציות לא בוטלו תחת reduced-motion');
   step('מראה "לבד ירוק": מתג בתפריט משנה את ה-data-theme וצבעי הרקע, ונשמר');
-  await rp.locator('button[aria-label="תפריט"]').tap();
-  await rp.getByRole('menuitem', { name: /עבור ללבד ירוק/ }).tap();
+  await rp.locator('button[aria-label="תפריט"]').click();
+  await rp.getByRole('menuitem', { name: /עבור ללבד ירוק/ }).click();
   const th = await rp.evaluate(() => ({ t: document.documentElement.dataset.theme, bg: getComputedStyle(document.documentElement).getPropertyValue('--bg-0').trim(), saved: localStorage.getItem('theme') }));
   assert.deepEqual(th, { t: 'felt', bg: '#082016', saved: 'felt' });
   await rm.close();
