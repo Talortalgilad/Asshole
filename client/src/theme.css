@@ -462,6 +462,7 @@
 .arena-seat.slot-top { top: 1%; left: 50%; width: 30%; transform: translateX(-50%); }
 .arena-seat.slot-topLeft { top: 1%; left: 14%; width: 26%; }
 .arena-seat.slot-topRight { top: 1%; right: 14%; width: 26%; }
+.arena-seat.slot-bottom { bottom: -3%; left: 50%; width: 30%; transform: translateX(-50%); }
 .arena:has(.arena-seat.slot-topLeft) .arena-seat.slot-left, .arena:has(.arena-seat.slot-topLeft) .arena-seat.slot-right { top: 60%; }
 
 /* מושב */
@@ -563,6 +564,23 @@
 @media (prefers-reduced-motion: reduce) {
   .emoji-bubble { animation: emoji-fade 3s linear both; }
   .emoji-bubble.land { animation-delay: 0s; animation-duration: 3s; }
-  .emoji-throw { display: none; }
+  .emoji-throw { display: none; animation: none !important; }
   @keyframes emoji-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 }
+
+
+/* ======================================================================
+   צפייה במשחק (חלק ג')
+   ====================================================================== */
+.watch-bar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem .75rem; margin: .4rem .75rem 0; border-radius: .5rem; font: 800 .85rem var(--font-he);
+  background: color-mix(in srgb, var(--violet) 55%, var(--bg-0)); border: 1px solid color-mix(in srgb, var(--cyan) 45%, transparent); }
+.viewers { display: inline-flex; align-items: center; gap: .25rem; font: 800 .75rem var(--font-he); color: var(--text-dim); }
+.spec-feed { position: absolute; z-index: 44; left: .25rem; bottom: 1.4rem; display: flex; flex-direction: column-reverse; gap: .25rem; pointer-events: none; max-width: 38%; }
+.spec-item { display: inline-flex; align-items: center; gap: .3rem; align-self: flex-start; padding: .1rem .5rem; border-radius: 1rem; font: 700 .72rem var(--font-he);
+  background: color-mix(in srgb, var(--bg-0) 88%, transparent); border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent); animation: spec-in 3.2s ease-out both; }
+.spec-item b { font-size: 1.15rem; line-height: 1; }
+@keyframes spec-in { 0% { opacity: 0; transform: translateX(-12px); } 8% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .spec-item { animation: spec-fade 3.2s linear both; } @keyframes spec-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } } }
+
+.arena.watch .arena-note { top: 14%; bottom: auto; }
+.arena.watch .arena-note .label-dim { display: none; }

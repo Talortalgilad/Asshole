@@ -28,6 +28,10 @@ export function JoinByCodePage() {
   return (
     <Waiting
       label="" timeoutCode="" onBack={() => nav('/lobby', { replace: true })} backLabel="חזרה ללובי"
+      onRetry={err.reason === 'started' || err.reason === 'full' ? () => {
+        c.actions.spectate({ code }).then(({ tableId }) => nav(`/watch/${tableId}`, { replace: true }), (e: ClientError) => setErr(e));
+      } : undefined}
+      retryLabel="👁 צפה במשחק"
       error={{
         title: err.reason === 'started' ? 'המשחק כבר התחיל' : err.reason === 'full' ? 'השולחן מלא' : err.reason === 'not_found' ? 'קוד ההזמנה לא תקין או שהשולחן נסגר' : 'לא ניתן להצטרף',
         code: `${err.code}${err.reason ? `/${err.reason}` : ''}`,

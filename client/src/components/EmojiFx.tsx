@@ -34,9 +34,18 @@ function EmojiOne({ e, arenaRef }: { e: EmojiEvent; arenaRef: RefObject<HTMLElem
 }
 
 export function EmojiLayer({ events, arenaRef }: { events: EmojiEvent[]; arenaRef: RefObject<HTMLElement | null> }) {
+  const feed = events.filter((e) => e.spectator);
   return (
-    <div className="emoji-fx" aria-live="polite">
-      {events.map((e) => <EmojiOne key={e.id} e={e} arenaRef={arenaRef} />)}
-    </div>
+    <>
+      <div className="emoji-fx" aria-live="polite">
+        {events.filter((e) => !e.spectator).map((e) => <EmojiOne key={e.id} e={e} arenaRef={arenaRef} />)}
+      </div>
+      {/* אימוג'י של צופים: בפס צד עם השם, כי אין להם מושב */}
+      {feed.length > 0 && (
+        <div className="spec-feed" aria-label="צופים">
+          {feed.map((e) => <span key={e.id} className="spec-item">👁 <span className="truncate">{e.spectator}</span> <b>{e.emoji}</b></span>)}
+        </div>
+      )}
+    </>
   );
 }

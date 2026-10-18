@@ -40,8 +40,9 @@ export function AppBar() {
   }, [open]);
 
   const p = loc.pathname;
-  const onTable = p.startsWith('/table/');
+  const onTable = p.startsWith('/table/') || p.startsWith('/watch/');
   const title = p.startsWith('/lobby') ? 'לובי'
+    : p.startsWith('/watch/') ? '👁 צפייה'
     : onTable ? (c.table ? (PHASE_TITLE[c.table.phase] ?? c.table.name) : 'שולחן')
     : p.startsWith('/profile') ? 'פרופיל'
     : p.startsWith('/leaderboard') ? 'טבלת אלופים'

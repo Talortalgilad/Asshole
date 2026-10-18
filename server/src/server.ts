@@ -243,6 +243,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     socket.on('table:create', (p?: { maxPlayers?: unknown; isPrivate?: unknown; name?: unknown }) => {
       const prof = needProfile();
       if (!prof) return;
+      stopSpectating(true);
       const cur = joinedTable();
       if (cur) return void socket.emit('game:error', { code: 'already_in_table', tableId: cur.tableId, message: 'אתה כבר יושב בשולחן' });
       if (manager.size >= MAX_TABLES) return void socket.emit('game:error', { code: 'too_many_tables', message: 'יש יותר מדי שולחנות פתוחים, נסה שוב מאוחר יותר' });
@@ -259,6 +260,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     socket.on('table:join', (p?: { tableId?: unknown; code?: unknown }) => {
       const prof = needProfile();
       if (!prof) return;
+      stopSpectating(true);
       const cur = joinedTable();
       const byCode = typeof p?.code === 'string' && p.code.trim() ? manager.byInvite(p.code) : undefined;
       const byId = typeof p?.tableId === 'string' ? manager.get(p.tableId) : undefined;
@@ -273,7 +275,33 @@ export function createGameServer(opts: ServerOptions = {}) {
       socket.emit('table:joined', { tableId: room.tableId, inviteCode: room.inviteCode });
     });
 
+    // ---------- צפייה ----------
+    // שולחן פרטי: רק עם קוד הזמנה. מי שיושב ליד שולחן לא יכול לצפות באחר.
+    const stopSpectating = (all = false) => {
+      const r = socket.data.spectating as ReturnType<RoomManager['get']> | undefined;
+      if (r) r.unspectate(uid, all ? undefined : socket.id);
+      socket.data.spectating = undefined;
+    };
+    socket.on('table:spectate', (p?: { tableId?: unknown; code?: unknown }) => {
+      const prof = needProfile();
+      if (!prof) return;
+      const cur = joinedTable();
+      if (cur) return void socket.emit('game:error', { code: 'already_in_table', tableId: cur.tableId, message: 'אתה יושב ליד שולחן. צא ממנו כדי לצפות באחר.' });
+      const byCode = typeof p?.code === 'string' && p.code.trim() ? manager.byInvite(p.code) : undefined;
+      const byId = typeof p?.tableId === 'string' ? manager.get(p.tableId) : undefined;
+      const prev = socket.data.spectating as ReturnType<RoomManager['get']> | undefined;
+      const room = byCode ?? (byId && (!byId.isPrivate || byId === prev) ? byId : undefined);
+      if (!room || room.isClosed) return joinFailed('השולחן לא נמצא (אולי נסגר)', 'not_found');
+      if (prev && prev !== room) stopSpectating(true);
+      const err = room.spectate(uid, prof.username, socket.id);
+      if (err) return joinFailed(err, room.isClosed ? 'closed' : 'full');
+      socket.data.spectating = room;
+      socket.emit('spectate:joined', { tableId: room.tableId });
+      broadcastLobby();
+    });
+
     socket.on('table:leave', (p?: { reason?: unknown }) => {
+      stopSpectating(true);
       const reason = typeof p?.reason === 'string' ? p.reason.slice(0, 40) : 'unknown';
       const t = manager.tableOf(uid);
       if (t) console.log(`[table] יציאה: ${uid} מ-${t.tableId} סיבה=${reason} socket=${socket.id} sockets=${online.get(uid)?.sockets ?? 0}`);
@@ -302,7 +330,12 @@ export function createGameServer(opts: ServerOptions = {}) {
       joinedTable()?.play(uid, p.cardIds as string[]);
     });
     socket.on('game:pass', () => joinedTable()?.pass(uid));
-    socket.on('emoji:send', (p?: { emoji?: unknown; to?: unknown }) => joinedTable()?.emoji(uid, p?.emoji, p?.to));
+    socket.on('emoji:send', (p?: { emoji?: unknown; to?: unknown }) => {
+      const t = joinedTable();
+      if (t) return t.emoji(uid, p?.emoji, p?.to);
+      // צופה: אימוג'י כללי בלבד, בלי יעד
+      (socket.data.spectating as ReturnType<RoomManager['get']> | undefined)?.spectatorEmoji(uid, p?.emoji);
+    });
     socket.on('game:again', () => joinedTable()?.again(uid));
     socket.on('room:addBot', (p?: { seat?: number }) => joinedTable()?.addBot(uid, p?.seat));
     socket.on('room:kick', (p?: { seat?: number }) => {
@@ -315,6 +348,7 @@ export function createGameServer(opts: ServerOptions = {}) {
     });
 
     socket.on('disconnect', () => {
+      stopSpectating(false);
       manager.tableOf(uid)?.disconnect(uid, socket.id);
       entry.sockets -= 1;
       if (entry.sockets <= 0 && online.get(uid) === entry) online.delete(uid);

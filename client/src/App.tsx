@@ -21,6 +21,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/lobby" replace /> },
       { path: 'lobby', element: <LobbyPage /> },
       { path: 'table/:id', element: <TablePage /> },
+      { path: 'watch/:id', element: <TablePage watch /> },
       { path: 'join/:code', element: <JoinByCodePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'leaderboard', element: <LeaderboardPage /> },

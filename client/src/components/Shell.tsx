@@ -81,7 +81,7 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
   const loc = useLocation();
   const phase = c.table?.phase ?? '';
   const seated = !!c.tableId;
-  const inGame = seated && (phase === 'playing' || phase === 'exchange');
+  const inGame = seated && !c.spectating && (phase === 'playing' || phase === 'exchange');
   const inGameRef = useRef(inGame);
   inGameRef.current = inGame;
   // איזה אישור נדרש ליציאה: באמצע משחק / מארח שסוגר את השולחן / מארח שמעביר אחריות
@@ -132,7 +132,7 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
 
   // יציאה מדף השולחן (אחורה בדפדפן, תפריט) כשלא באמצע משחק: המושב מתפנה מיד.
   // דחייה קצרה כדי ש-StrictMode / ניווט פנימי לא יוציאו בטעות
-  const onTableRoute = loc.pathname.startsWith('/table/');
+  const onTableRoute = loc.pathname.startsWith('/table/') || loc.pathname.startsWith('/watch/');
   // רק מי שבאמת היה בדף השולחן במושב הזה יוצא אוטומטית. מי ש"חובר מחדש" בשקט (טלפון נוסף עם אותו חשבון,
   // רענון בדף אחר) לא ביקש לשבת ולא יכול להוציא את כולם מהשולחן.
   const visitedTable = useRef(false);

@@ -8,7 +8,8 @@ export const isEmoji = (x: unknown): x is Emoji => typeof x === 'string' && (EMO
 /** אימוג'י אחד לכל 2 שניות לשחקן (נאכף בשרת) */
 export const EMOJI_COOLDOWN_MS = 2000;
 
-export type EmojiEvent = { id: number; from: string; to: string | null; emoji: Emoji };
+/** spectator: שם הצופה (אם האימוג'י הגיע מצופה ולא משחקן; מוצג בפס צד) */
+export type EmojiEvent = { id: number; from: string; to: string | null; emoji: Emoji; spectator?: string };
 
 export type BotReaction = { from: string; emoji: Emoji; delayMs: number };
 

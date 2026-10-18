@@ -80,6 +80,18 @@ try {
   await p.waitForTimeout(2500);
   assert.ok(onTable(), 'המשחק התחיל אבל הדף עזב את השולחן');
 
+  step('prefers-reduced-motion: טיסת קלפים, חלוקה, קונפטי ואימוג׳י זורק מבוטלים');
+  const rm = await browser.newContext({ viewport: { width: 375, height: 667 }, reducedMotion: 'reduce' });
+  const rp = await rm.newPage();
+  await rp.goto(`${base}/?name=Calm`);
+  await rp.waitForSelector('text=שולחנות פתוחים');
+  const names = await rp.evaluate(() => ['pile-play fresh', 'pile-play collect', 'deal-card', 'emoji-throw'].map((cls) => {
+    const el = document.createElement('div'); el.className = cls; document.body.appendChild(el);
+    const n = getComputedStyle(el).animationName; el.remove(); return n;
+  }));
+  assert.deepEqual(names, ['none', 'none', 'none', 'none'], 'אנימציות לא בוטלו תחת reduced-motion');
+  await rm.close();
+
   assert.deepEqual(errors, [], 'שגיאות JS בדף');
   console.log('PASS');
 } catch (e) {

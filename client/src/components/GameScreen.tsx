@@ -104,7 +104,7 @@ export function GameScreen() {
       <Banners banners={c.banners} />
 
       <div className="flex items-center justify-between px-3 pt-2 text-xs">
-        <span className="label-dim">משחק {view.handNumber}</span>
+        <span className="label-dim">משחק {view.handNumber}{(c.table?.spectators ?? 0) > 0 && <span className="viewers ms-2">👁 {c.table!.spectators} צופים</span>}</span>
         <button onClick={() => setShowLog((v) => !v)} className="chip ghost" style={{ cursor: 'pointer' }} aria-expanded={showLog}>{showLog ? 'הסתר יומן' : 'יומן מהלכים'}</button>
       </div>
 

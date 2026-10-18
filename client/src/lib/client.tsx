@@ -8,14 +8,14 @@ import { bannerFor, cardLabel, logLine, nameOf, type Banner } from './game';
 export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean; photoURL?: string; isGuest?: boolean; rank?: number | null } | null;
 export type TableState = {
   tableId: string; name: string; isPrivate: boolean; inviteCode: string | null;
-  needed: number; phase: string; hostId: string | null; seats: TableSeat[];
+  needed: number; phase: string; hostId: string | null; seats: TableSeat[]; spectators?: number;
 };
 export type SessionRow = {
   uid: string; name: string; isBot: boolean; points: number; games: number; joinedAtGame: number;
   titles: Record<'president' | 'vicePresident' | 'middle' | 'viceAsshole' | 'asshole', number>;
 };
 export type SessionSummary = { games: number; players: number; rows: SessionRow[] };
-export type LobbyTable = { id: string; name: string; players: number; humans: number; max: number; phase: string; hostName: string; isPrivate: boolean };
+export type LobbyTable = { id: string; name: string; players: number; humans: number; max: number; phase: string; hostName: string; isPrivate: boolean; spectators?: number };
 export type LobbyUser = { uid: string; name: string; photoURL: string; isGuest: boolean; rank: number; at: string | null };
 export type LobbyState = { tables: LobbyTable[]; online: LobbyUser[] };
 export type GameResult = { uid: string; name: string; isBot: boolean; replaced: boolean; place: number; title: string | null };
@@ -57,6 +57,8 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const [exchange, setExchange] = useState<ExchangeView | null>(null);
   const [results, setResults] = useState<GameResult[] | null>(null);
   const [scored, setScored] = useState<GameOutcome | null>(null);
+  const [spectating, setSpectating] = useState(false);
+  const spectatingRef = useRef(false);
   const [emojis, setEmojis] = useState<EmojiEvent[]>([]);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardState | null>(null);
@@ -78,13 +80,18 @@ function useClientState(getAuth: AuthPayload, key: string) {
     const resetTable = () => {
       viewRef.current = null;
       tableIdRef.current = null;
+      spectatingRef.current = false; setSpectating(false);
       setEmojis([]);
       setTableId(null); setResumeTableId(null); setTable(null); setView(null); setExchange(null); setResults(null); setScored(null); setLog([]); setClosingPlay(null);
       setLeaving(false);
       leaveWaiters.current.splice(0).forEach((f) => f());
     };
 
-    socket.on('connect', () => { setConnected(true); setConnectError(null); });
+    socket.on('connect', () => {
+      setConnected(true); setConnectError(null);
+      // צופה לא נשמר בשרת אחרי ניתוק: מצטרפים שוב לצפייה
+      if (spectatingRef.current && tableIdRef.current) socket.emit('table:spectate', { tableId: tableIdRef.current });
+    });
     socket.on('disconnect', () => setConnected(false));
     socket.on('connect_error', (e: Error) => { setConnected(false); setConnectError(e.message); });
     socket.on('profile:state', (p: ProfileState) => { setProfile(p); setProfileError(null); setDeckError(null); });
@@ -93,23 +100,31 @@ function useClientState(getAuth: AuthPayload, key: string) {
     socket.on('lobby:state', (l: LobbyState) => setLobby(l));
 
     socket.on('table:joined', (j: { tableId: string }) => {
+      spectatingRef.current = false; setSpectating(false);
       tableIdRef.current = j.tableId;
       setTableId(j.tableId);
       if (pending.current) { pending.current.resolve(j); pending.current = null; } else setResumeTableId(j.tableId);
     });
+    socket.on('spectate:joined', (j: { tableId: string }) => {
+      spectatingRef.current = true; setSpectating(true);
+      tableIdRef.current = j.tableId;
+      setTableId(j.tableId);
+      if (pending.current) { pending.current.resolve(j); pending.current = null; }
+    });
     socket.on('table:left', (m?: { reason?: string; by?: string }) => {
       // אם הבקשה באה מחיבור אחר של אותו חשבון, זו לא היציאה שלי
-      const r = m?.by && m.by !== socket.id ? `server:left-elsewhere:${m.reason ?? '?'}` : leaveReason.current;
+      const r = m?.reason === 'closed' ? null : m?.by && m.by !== socket.id ? `server:left-elsewhere:${m.reason ?? '?'}` : leaveReason.current;
       leaveReason.current = null;
       // יציאה אוטומטית (לא לחיצה של המשתמש) מוצגת עם קוד סיבה, כדי שאפשר יהיה לאתר אותה
-      if (!r) say('יצאת מהשולחן בלי בקשה (server:left-unknown)');
+      if (m?.reason === 'closed') say('השולחן נסגר (server:table-closed)');
+      else if (!r) say('יצאת מהשולחן בלי בקשה (server:left-unknown)');
       else if (!r.startsWith('ui:')) say(`יצאת מהשולחן (${r})`);
       explainedLeave.current = true;
       resetTable();
     });
     // הסנכרון בכל חיבור: אם חשבתי שאני בשולחן והשרת לא מכיר אותו (נסגר בזמן שהייתי מנותק)
     socket.on('session:state', (s: { tableId: string | null }) => {
-      if (tableIdRef.current && s.tableId !== tableIdRef.current) {
+      if (tableIdRef.current && !spectatingRef.current && s.tableId !== tableIdRef.current) {
         say('השולחן נסגר בזמן שהיית מנותק (server:table-gone)');
         resetTable();
       }
@@ -197,6 +212,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
     lobbyLeave: () => emit('lobby:leave'),
     createTable: (o: { maxPlayers: 4 | 5; isPrivate: boolean; name: string }) => request('table:create', o),
     joinTable: (o: { tableId?: string; code?: string }) => request('table:join', o),
+    spectate: (o: { tableId?: string; code?: string }) => request('table:spectate', o),
     /** יציאה מהשולחן; מסתיים אחרי שהשרת אישר (table:left), או אחרי 3 שניות */
     leaveTable: (reason = 'ui:leave') => new Promise<void>((resolve) => {
       if (!socketRef.current) return resolve();
@@ -225,7 +241,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   return {
     connected, connectError, profile, profileError, deckError, lobby, tableId, resumeTableId, table, view, exchange, results, scored, leaderboard,
     banners, log, error, notice, closingPlay, leaving, actions,
-    emojis,
+    emojis, spectating,
     clearNotice: () => setNotice(null),
     sessionSummary, clearSessionSummary: () => setSessionSummary(null),
   };

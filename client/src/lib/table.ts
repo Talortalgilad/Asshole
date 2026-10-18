@@ -1,6 +1,6 @@
 /** גיאומטריה של השולחן: מיקום מושבים, וזווית/היסט קבועים לכל מהלך בערימה. */
 
-export type Slot = 'left' | 'top' | 'right' | 'topLeft' | 'topRight';
+export type Slot = 'left' | 'top' | 'right' | 'topLeft' | 'topRight' | 'bottom';
 
 /** מושבי היריבים לפי סדר התור (עם כיוון השעון מהתחתית): שמאל, למעלה, ימין */
 export function slotsFor(opponents: number): Slot[] {
@@ -17,6 +17,7 @@ export const SLOT_VEC: Record<Slot | 'me', { x: number; y: number }> = {
   top: { x: 0, y: -125 },
   topLeft: { x: -85, y: -125 },
   topRight: { x: 85, y: -125 },
+  bottom: { x: 0, y: 125 },
   me: { x: 0, y: 190 },
 };
 

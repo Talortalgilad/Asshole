@@ -23,8 +23,10 @@ export function TableArena({ view, closing, emojis = [], targetId = null, mutedI
   mutedIds?: ReadonlySet<string>; onSeatTap?(id: string): void; onSeatHold?(id: string): void;
 }) {
   const arenaRef = useRef<HTMLDivElement>(null);
-  const opps = opponentsInOrder(view);
-  const slots = slotsFor(opps.length);
+  // צופה אין לו מושב: כל המושבים סביב השולחן, אחד מהם בתחתית
+  const spectator = !view.seats.some((x) => x.isMe);
+  const opps = spectator ? view.seats : opponentsInOrder(view);
+  const slots = spectator ? (['bottom', ...slotsFor(opps.length - 1)] as Slot[]) : slotsFor(opps.length);
   const slotOf = (id: string): Slot | 'me' => {
     const i = opps.findIndex((s) => s.id === id);
     return i < 0 ? 'me' : slots[i];
@@ -76,7 +78,7 @@ export function TableArena({ view, closing, emojis = [], targetId = null, mutedI
   const lastPlayer = shown.length ? shown[shown.length - 1].playerId : null;
 
   return (
-    <div className="arena" ref={arenaRef}>
+    <div className={`arena ${spectator ? 'watch' : ''}`} ref={arenaRef}>
      <div className="table-plane">
       <div className="felt" aria-hidden="true" />
       <div className="felt-logo" aria-hidden="true">פריזידנט</div>

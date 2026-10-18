@@ -25,12 +25,13 @@ type Props = {
   /** שגיאה מיידית (בלי לחכות לדדליין) */
   error?: WaitError;
   onRetry?: () => void;
+  retryLabel?: string;
   onBack?: () => void;
   backLabel?: string;
 };
 
 /** מסך המתנה: טעינה, ואם השרת לא ענה תוך 15 שניות (או נכשל) שגיאה עם קוד וכפתורים */
-export function Waiting({ label, timeoutCode, error, onRetry, onBack, backLabel = 'חזרה' }: Props) {
+export function Waiting({ label, timeoutCode, error, onRetry, retryLabel = 'נסה שוב', onBack, backLabel = 'חזרה' }: Props) {
   const slow = useDeadline(!error);
   const err: WaitError | undefined = error ?? (slow ? {
     title: 'השרת לא ענה', code: timeoutCode, hint: 'בדוק חיבור לאינטרנט ונסה שוב.',
@@ -50,7 +51,7 @@ export function Waiting({ label, timeoutCode, error, onRetry, onBack, backLabel 
       <p className="chip ghost magenta" dir="ltr" style={{ fontSize: '.85rem' }}>{err.code}</p>
       {err.hint && <p className="label-dim max-w-xs text-sm"><Mixed>{typeof err.hint === 'string' ? err.hint : ''}</Mixed>{typeof err.hint === 'string' ? null : err.hint}</p>}
       <div className="flex w-full max-w-xs flex-col gap-3">
-        {onRetry && <NeonButton small onClick={onRetry}>נסה שוב</NeonButton>}
+        {onRetry && <NeonButton small onClick={onRetry}>{retryLabel}</NeonButton>}
         {onBack && <NeonButton small tone="dim" onClick={onBack}>{backLabel}</NeonButton>}
       </div>
     </div>

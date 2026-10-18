@@ -281,6 +281,99 @@ describe('יציאה', () => {
   });
 });
 
+describe('צפייה במשחק', () => {
+  const CARD_ID = /"id":"([0-9AJQK]{1,2}[CDHS])"/g;
+
+  async function runningGame() {
+    const port = await start({ turnMs: 400, emojiCooldownMs: 100 });
+    const { clients, tableId, inviteCode } = await tableWith(port, 2);
+    const host = clients[0];
+    for (let i = 0; i < 2; i++) host.s.emit('room:addBot', {});
+    await until(() => host.table.seats.every(Boolean));
+    host.s.emit('room:start');
+    await until(() => !!host.view && !!clients[1].view);
+    return { port, clients, tableId, inviteCode };
+  }
+
+  it('צופה מקבל מצב שולחן בלי אף יד: hand ריק, ובכל payload קלפים רק ב-trick.plays', async () => {
+    const { port, clients, tableId } = await runningGame();
+    const spec = client(port, 7);
+    await until(() => spec.profiles.length > 0);
+    spec.s.emit('table:spectate', { tableId });
+    await until(() => spec.spectated.length === 1 && spec.views.length > 0);
+    const first = JSON.stringify(spec.views[0]);
+    // אף קלף מהיד של השחקנים לא הופיע ב-payload הראשון
+    for (const c of clients) for (const card of c.view.hand) expect(first).not.toContain(`"id":"${card.id}"`);
+    await new Promise((r) => setTimeout(r, 700)); // כמה מהלכים
+    expect(spec.views.length).toBeGreaterThan(1);
+    for (const v of spec.views) {
+      expect(v.hand).toEqual([]);
+      expect(v.me).toBe('');
+      const { trick, ...rest } = v;
+      expect(JSON.stringify(rest).match(CARD_ID)).toBeNull();
+      expect(v.seats.every((s: any) => !s.isMe && typeof s.cardCount === 'number')).toBe(true);
+    }
+    expect(spec.payloads.some((p) => p.event === 'exchange:state')).toBe(false);
+    expect(spec.payloads.some((p) => p.event === 'game:scored')).toBe(false);
+    expect(spec.table.spectators).toBe(1);
+    expect(spec.table.inviteCode).toBeNull();
+    expect(clients[0].table.spectators).toBe(1);
+  });
+
+  it('שולחן פרטי: צפייה רק עם קוד הזמנה; מי שיושב בשולחן לא יכול לצפות', async () => {
+    const port = await start();
+    const { clients, tableId, inviteCode } = await tableWith(port, 1, { isPrivate: true });
+    const spec = client(port, 8);
+    await until(() => spec.profiles.length > 0);
+    spec.s.emit('table:spectate', { tableId });
+    await until(() => spec.errors.length > 0);
+    expect(spec.errors[0]).toMatchObject({ code: 'join_failed', reason: 'not_found' });
+    spec.s.emit('table:spectate', { code: inviteCode });
+    await until(() => spec.spectated.length === 1);
+    clients[0].s.emit('table:spectate', { code: inviteCode });
+    await until(() => clients[0].errorCodes().includes('already_in_table'));
+  });
+
+  it('אימוג׳י צופה: כללי בלבד (בלי יעד), עם שם, מוגבל בקצב, ומגיע לשחקנים', async () => {
+    const { port, clients, tableId } = await runningGame();
+    const spec = client(port, 7);
+    await until(() => spec.profiles.length > 0);
+    spec.s.emit('table:spectate', { tableId });
+    await until(() => spec.spectated.length === 1);
+    spec.s.emit('emoji:send', { emoji: '🔥', to: clients[0].uid });
+    await until(() => clients[0].emojis.length === 1);
+    expect(clients[0].emojis[0]).toMatchObject({ from: spec.uid, to: null, emoji: '🔥', spectator: 'P7' });
+    spec.s.emit('emoji:send', { emoji: '😎' });
+    await until(() => spec.errorCodes().includes('emoji_rate'));
+    expect(clients[0].emojis).toHaveLength(1);
+  });
+
+  it('אחרי יציאה מהשולחן הצופה כבר לא מקבל עדכונים, ואפשר לשבת כשיש מקום', async () => {
+    const port = await start();
+    const { clients, tableId } = await tableWith(port, 1);
+    const spec = client(port, 7);
+    await until(() => spec.profiles.length > 0);
+    spec.s.emit('table:spectate', { tableId });
+    await until(() => spec.spectated.length === 1);
+    // חדר המתנה עם מקום פנוי: הצופה מתיישב
+    spec.s.emit('table:join', { tableId });
+    await until(() => spec.joined.length === 1);
+    expect(clients[0].table.spectators).toBe(0);
+    expect(clients[0].table.seats.filter(Boolean)).toHaveLength(2);
+  });
+
+  it('השולחן נסגר: הצופים מקבלים table:left', async () => {
+    const port = await start();
+    const { clients, tableId } = await tableWith(port, 1);
+    const spec = client(port, 7);
+    await until(() => spec.profiles.length > 0);
+    spec.s.emit('table:spectate', { tableId });
+    await until(() => spec.spectated.length === 1);
+    clients[0].s.emit('table:leave');
+    await until(() => spec.left > 0);
+  });
+});
+
 describe('אימוג׳ים', () => {
   it('נשלח לכולם בשולחן, או נזרק על שחקן; אימוג׳י לא מוכר נדחה', async () => {
     const port = await start({ emojiCooldownMs: 120 });

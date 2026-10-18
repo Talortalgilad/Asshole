@@ -57,8 +57,9 @@ function CreateDialog({ onClose, onCreate, hostName }: { onClose(): void; onCrea
   );
 }
 
-function TableRow({ t, onJoin, busy }: { t: LobbyTable; onJoin(): void; busy: boolean }) {
+function TableRow({ t, onJoin, onWatch, busy }: { t: LobbyTable; onJoin(): void; onWatch(): void; busy: boolean }) {
   const joinable = t.phase === 'waiting' && t.players < t.max;
+  const watchable = t.phase !== 'waiting';
   return (
     <li className={`row-card flex items-center gap-3 p-3 ${joinable ? 'active' : ''}`}>
       <div className="min-w-0 flex-1">
@@ -71,9 +72,13 @@ function TableRow({ t, onJoin, busy }: { t: LobbyTable; onJoin(): void; busy: bo
         </div>
       </div>
       <div className="w-28 shrink-0">
-        <NeonButton small tone={joinable ? 'cyan' : 'dim'} disabled={!joinable || busy} onClick={onJoin}>
-          {joinable ? 'הצטרף' : t.players >= t.max && t.phase === 'waiting' ? 'מלא' : 'במשחק'}
-        </NeonButton>
+        {watchable ? (
+          <NeonButton small tone="dim" disabled={busy} onClick={onWatch}>👁 צפה{t.spectators ? ` (${t.spectators})` : ''}</NeonButton>
+        ) : (
+          <NeonButton small tone={joinable ? 'cyan' : 'dim'} disabled={!joinable || busy} onClick={onJoin}>
+            {joinable ? 'הצטרף' : 'מלא'}
+          </NeonButton>
+        )}
       </div>
     </li>
   );
@@ -108,6 +113,12 @@ export function LobbyPage() {
     setBusy(false);
   };
 
+  const watch = async (tableId: string) => {
+    setBusy(true); setErr(null);
+    try { await c.actions.spectate({ tableId }); nav(`/watch/${tableId}`); } catch (e) { setErr(e as ClientError); }
+    setBusy(false);
+  };
+
   const me = c.profile?.profile;
   const tables = c.lobby?.tables ?? [];
   const online = c.lobby?.online ?? [];
@@ -132,7 +143,7 @@ export function LobbyPage() {
         <p className="label-dim">טוען שולחנות…</p>
       ) : tables.length > 0 && (
         <ul className="flex flex-col gap-2.5">
-          {tables.map((t) => <TableRow key={t.id} t={t} busy={busy} onJoin={() => void enter(c.actions.joinTable({ tableId: t.id }))} />)}
+          {tables.map((t) => <TableRow key={t.id} t={t} busy={busy} onJoin={() => void enter(c.actions.joinTable({ tableId: t.id }))} onWatch={() => void watch(t.id)} />)}
         </ul>
       )}
 

@@ -4,10 +4,11 @@ import { useClient, type ClientError } from '../lib/client';
 import { ExchangeScreen } from '../components/ExchangeScreen';
 import { GameScreen } from '../components/GameScreen';
 import { WaitingRoom } from '../components/WaitingRoom';
+import { WatchScreen } from '../components/WatchScreen';
 import { Waiting } from '../components/Waiting';
 
 /** /table/:id: חדר המתנה, החלפת קלפים או משחק, לפי שלב השולחן */
-export function TablePage() {
+export function TablePage({ watch = false }: { watch?: boolean }) {
   const { id = '' } = useParams();
   const c = useClient();
   const nav = useNavigate();
@@ -20,9 +21,15 @@ export function TablePage() {
     if (c.tableId === id) { wasIn.current = true; return; }
     if (c.leaving || tried.current === id || c.tableId) return;
     tried.current = id;
-    c.actions.joinTable({ tableId: id }).catch((e: ClientError) => setFailed(e));
+    (watch ? c.actions.spectate({ tableId: id }) : c.actions.joinTable({ tableId: id })).catch((e: ClientError) => setFailed(e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, c.tableId, c.leaving]);
+
+  // צופה שהתיישב ("שב לשחק"): עוברים לדף השולחן הרגיל
+  useEffect(() => {
+    if (watch && c.tableId === id && !c.spectating) nav(`/table/${id}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watch, c.tableId, c.spectating]);
 
   // יצאנו / הוצאו אותנו / הוחלפנו בבוט: חזרה ללובי
   useEffect(() => {
@@ -52,6 +59,8 @@ export function TablePage() {
     );
   }
   if (!c.table || c.tableId !== id) return <Waiting label="מצטרף לשולחן…" timeoutCode="join-timeout" onRetry={() => location.reload()} />;
+
+  if (watch) return <WatchScreen />;
 
   switch (c.table.phase) {
     case 'waiting': return <WaitingRoom />;

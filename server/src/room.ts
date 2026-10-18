@@ -74,6 +74,10 @@ type Exchange = {
   deadline: number | null;
 };
 
+const MAX_SPECTATORS = 30;
+/** אירועים פומביים שנשלחים גם לצופים (הכול חוץ מזה: רק לשחקנים) */
+const SPECTATOR_EVENTS = new Set(['game:event', 'game:over', 'emoji:event']);
+
 const BOT_NAMES = ['רובי 🤖', 'ביפ 🤖', "צ'יפ 🤖", 'בוטי 🤖', 'טורבו 🤖'];
 
 /** שולחן אחד: חדר המתנה עם מארח ובוטים, החלפת קלפים, ואז משחק. לוגיקה בלבד – בלי Socket.IO. */
@@ -98,6 +102,8 @@ export class GameRoom {
   /** מי שהשתתף במשחק הנוכחי (בהתחלה): לניקוד. כולל מי שיצא ובוט החליף אותו. */
   private gameHumans: { uid: string; isGuest: boolean }[] = [];
   private handNumber = 0;
+  /** צופים (לא יושבים ליד השולחן): רואים רק מידע פומבי */
+  private spectators = new Map<string, { name: string; sockets: Set<string> }>();
   private lastEmoji = new Map<string, number>();
   private emojiSeq = 0;
   private fxTimers = new Set<NodeJS.Timeout>();
@@ -133,7 +139,7 @@ export class GameRoom {
     return {
       id: this.tableId, name: this.name, isPrivate: this.isPrivate,
       players: this.seats.filter(Boolean).length, humans: this.humans().length, max: this.opts.players,
-      phase: this.phase, hostName: host ? host.name : '',
+      phase: this.phase, hostName: host ? host.name : '', spectators: this.spectators.size,
     };
   }
 
@@ -366,6 +372,8 @@ export class GameRoom {
   private closeTable() {
     if (this.closed) return;
     this.closed = true;
+    for (const uid of this.spectators.keys()) this.opts.send(uid, 'table:left', { reason: 'closed' });
+    this.spectators.clear();
     this.close();
     this.members.clear();
     this.seats = Array(this.opts.players).fill(null);
@@ -565,6 +573,56 @@ export class GameRoom {
     } else this.armTimer();
   }
 
+  // ---------- צפייה ----------
+  get spectatorCount() {
+    return this.spectators.size;
+  }
+
+  /** צופה מצטרף (אם הוא כבר צופה, מוסיף חיבור). @returns הודעת שגיאה או null */
+  spectate(uid: string, name: string, socketId: string): string | null {
+    if (this.closed) return 'השולחן נסגר';
+    if (this.members.has(uid)) return 'אתה יושב בשולחן הזה';
+    let sp = this.spectators.get(uid);
+    if (!sp) {
+      if (this.spectators.size >= MAX_SPECTATORS) return 'יש יותר מדי צופים בשולחן';
+      sp = { name, sockets: new Set() };
+      this.spectators.set(uid, sp);
+    }
+    sp.name = name;
+    sp.sockets.add(socketId);
+    this.publish();
+    this.changed();
+    return null;
+  }
+
+  /** צופה יוצא: חיבור אחד (ניתוק), או כולו (socketId לא נתון) */
+  unspectate(uid: string, socketId?: string) {
+    const sp = this.spectators.get(uid);
+    if (!sp) return;
+    if (socketId) sp.sockets.delete(socketId);
+    if (!socketId || sp.sockets.size === 0) this.spectators.delete(uid);
+    else return;
+    this.lastEmoji.delete(uid);
+    if (!this.closed) { this.publish(); this.changed(); }
+  }
+
+  isSpectator(uid: string) {
+    return this.spectators.has(uid);
+  }
+
+  /** אימוג'י כללי מצופה (בלי יעד): מוצג בפס צד עם שמו, מוגבל בקצב */
+  spectatorEmoji(uid: string, emoji: unknown) {
+    const sp = this.spectators.get(uid);
+    if (!sp) return;
+    if (!isEmoji(emoji)) return this.error(uid, 'bad_emoji', 'אימוג׳י לא תקין');
+    const now = Date.now();
+    if (now - (this.lastEmoji.get(uid) ?? 0) < (this.opts.emojiCooldownMs ?? EMOJI_COOLDOWN_MS)) {
+      return this.error(uid, 'emoji_rate', 'אימוג׳י אחד כל 2 שניות');
+    }
+    this.lastEmoji.set(uid, now);
+    this.broadcast('emoji:event', { id: ++this.emojiSeq, from: uid, to: null, emoji, spectator: sp.name });
+  }
+
   /** אימוג'י משחקן: לכולם בשולחן, או "נזרק" על שחקן מסוים. מוגבל בקצב. */
   emoji(uid: string, emoji: unknown, to?: unknown) {
     const m = this.members.get(uid);
@@ -707,13 +765,14 @@ export class GameRoom {
 
   private broadcast(event: string, payload: unknown) {
     for (const m of this.humans()) this.opts.send(m.uid, event, payload);
+    if (SPECTATOR_EVENTS.has(event)) for (const uid of this.spectators.keys()) this.opts.send(uid, event, payload);
   }
 
   /** שולח לכל שחקן את המצב המסונן שלו בלבד */
   publish() {
     if (this.closed) return;
     const info = this.seatInfo();
-    this.broadcast('table:state', {
+    const table = {
       tableId: this.tableId,
       name: this.name,
       isPrivate: this.isPrivate,
@@ -721,11 +780,18 @@ export class GameRoom {
       needed: this.opts.players,
       phase: this.phase,
       hostId: this.hostId,
+      spectators: this.spectators.size,
       seats: this.seats.map((uid) => {
         const m = uid ? this.members.get(uid) : null;
         return m ? { uid: m.uid, name: this.displayName(m), isBot: m.isBot, connected: info[m.uid].connected, photoURL: m.photoURL ?? '', isGuest: !!m.isGuest, rank: m.isBot ? null : rankIndex(m.points ?? 0), deck: m.deck ?? DEFAULT_DECK } : null;
       }),
-    });
+    };
+    this.broadcast('table:state', table);
+    // צופים: אותו מצב שולחן בלי קוד הזמנה, ומצב משחק בלי יד של אף אחד (viewFor עם uid ריק)
+    for (const uid of this.spectators.keys()) {
+      this.opts.send(uid, 'table:state', { ...table, inviteCode: null });
+      if (this.state) this.opts.send(uid, 'game:state', viewFor(this.state, '', info, this.deadline));
+    }
     if (this.ex) this.publishExchange();
     if (!this.state) return;
     for (const m of this.humans()) {
