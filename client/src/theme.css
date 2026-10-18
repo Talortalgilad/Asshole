@@ -522,3 +522,47 @@
   .pile-play.fresh, .pile-play.collect, .deal-card, .confetti i { animation: none !important; }
   .confetti, .deal-layer { display: none; }
 }
+
+/* ======================================================================
+   אימוג'ים (חלק ב'): מגש, בועות מעל מושב, זריקה למושב אחר
+   ====================================================================== */
+.emoji-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem; margin: 0 .75rem; padding: .45rem .5rem; border-radius: .6rem;
+  background: color-mix(in srgb, var(--bg-1) 94%, var(--cyan)); border: 1px solid color-mix(in srgb, var(--cyan) 55%, transparent); box-shadow: 0 0 calc(14px * var(--glow)) color-mix(in srgb, var(--cyan) 30%, transparent); }
+.emoji-tray .emoji-btn { width: 2.5rem; height: 2.5rem; font-size: 1.55rem; line-height: 1; border-radius: .5rem; border: 1px solid transparent; background: transparent; cursor: pointer; }
+.emoji-tray .emoji-btn:active { transform: scale(.88); }
+.emoji-tray .emoji-btn:disabled { opacity: .35; cursor: default; }
+.emoji-tray .emoji-btn:hover:not(:disabled), .emoji-tray .emoji-btn:focus-visible { background: color-mix(in srgb, var(--cyan) 16%, transparent); border-color: var(--cyan); outline: none; }
+.emoji-tray .tray-head { flex-basis: 100%; display: flex; align-items: center; justify-content: center; gap: .5rem; font: 800 .8rem var(--font-he); color: var(--magenta); }
+.emoji-toggle { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; font-size: 1.3rem; line-height: 1; cursor: pointer;
+  border: 1.5px solid var(--cyan); background: color-mix(in srgb, var(--bg-0) 85%, var(--cyan)); box-shadow: 0 0 calc(8px * var(--glow)) color-mix(in srgb, var(--cyan) 45%, transparent); }
+.emoji-toggle[aria-expanded='true'] { background: color-mix(in srgb, var(--cyan) 26%, var(--bg-0)); }
+
+.emoji-fx { position: absolute; z-index: 45; left: 0; top: 0; pointer-events: none; }
+.emoji-bubble { position: absolute; transform: translate(-50%, -50%); font-size: 2.1rem; line-height: 1; padding: .25rem .45rem; border-radius: 1rem;
+  background: color-mix(in srgb, var(--bg-0) 88%, transparent); border: 1.5px solid var(--cyan); box-shadow: 0 0 calc(12px * var(--glow)) color-mix(in srgb, var(--cyan) 55%, transparent);
+  animation: emoji-pop 3s ease-out both; }
+.emoji-bubble::after { content: ''; position: absolute; left: 50%; bottom: -.45rem; width: .6rem; height: .6rem; transform: translateX(-50%) rotate(45deg); background: inherit; border-right: 1.5px solid var(--cyan); border-bottom: 1.5px solid var(--cyan); }
+.emoji-bubble.land { animation-delay: .7s; animation-duration: 2.3s; }
+.emoji-bubble.land.hit { border-color: var(--magenta); box-shadow: 0 0 calc(12px * var(--glow)) color-mix(in srgb, var(--magenta) 60%, transparent); }
+@keyframes emoji-pop {
+  0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; }
+  8% { transform: translate(-50%, -50%) scale(1.18); opacity: 1; }
+  14% { transform: translate(-50%, -50%) scale(1); }
+  84% { opacity: 1; }
+  100% { transform: translate(-50%, -62%) scale(1); opacity: 0; }
+}
+.emoji-throw { position: absolute; font-size: 2rem; line-height: 1; transform: translate(-50%, -50%); animation: emoji-throw .7s cubic-bezier(.3, .1, .6, 1) both; }
+@keyframes emoji-throw {
+  0% { left: var(--x0); top: var(--y0); transform: translate(-50%, -50%) scale(.6) rotate(0deg); opacity: 1; }
+  100% { left: var(--x1); top: var(--y1); transform: translate(-50%, -50%) scale(1.15) rotate(540deg); opacity: 1; }
+}
+.seat-avatar { cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.seat-avatar.target { box-shadow: 0 0 0 2.5px var(--magenta), 0 0 calc(16px * var(--glow)) var(--magenta); }
+.seat-muted { position: absolute; left: -.4rem; top: -.3rem; font-size: .85rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .emoji-bubble { animation: emoji-fade 3s linear both; }
+  .emoji-bubble.land { animation-delay: 0s; animation-duration: 3s; }
+  .emoji-throw { display: none; }
+  @keyframes emoji-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+}

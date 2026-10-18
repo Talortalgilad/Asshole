@@ -1,11 +1,20 @@
+import { useRef } from 'react';
 import { TITLE_LABEL, type SeatView } from '@asshole/shared';
 import { Avatar, RankChip, Seconds, TimerBar } from './ui';
 import { NeonCard } from './NeonCard';
 
-type Props = { seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null };
+type Props = {
+  seat: SeatView; isTurn: boolean; passed: boolean; deadline: number | null;
+  /** נבחר כיעד לזריקת אימוג'י */
+  target?: boolean; muted?: boolean; onTap?: () => void; onHold?: () => void;
+};
 
 /** מושב ליד השולחן: אווטאר עגול על השוליים, מניפת קלפי גב מאחוריו, ושם. */
-export function Seat({ seat, isTurn, passed, deadline }: Props) {
+export function Seat({ seat, isTurn, passed, deadline, target, muted, onTap, onHold }: Props) {
+  // לחיצה קצרה = בחירת יעד לאימוג'י; לחיצה ארוכה = השתקה
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
+  const stop = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };
   const out = seat.place !== null;
   const fan = Math.min(seat.cardCount, 5);
   const label = seat.isBot ? '🤖' : Array.from(seat.name)[0] ?? '?';
@@ -23,7 +32,15 @@ export function Seat({ seat, isTurn, passed, deadline }: Props) {
           })}
         </div>
       )}
-      <div className={`seat-avatar ${isTurn ? 'turn-ring' : ''}`}>
+      <div
+        className={`seat-avatar ${isTurn ? 'turn-ring' : ''} ${target ? 'target' : ''}`} data-seat={seat.id}
+        role="button" tabIndex={0} aria-label={`${seat.name}: לחיצה לשליחת אימוג׳י, לחיצה ארוכה להשתקה`}
+        onPointerDown={() => { held.current = false; stop(); timer.current = setTimeout(() => { held.current = true; onHold?.(); }, 550); }}
+        onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onContextMenu={(e) => e.preventDefault()}
+        onClick={() => { if (held.current) { held.current = false; return; } onTap?.(); }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap?.(); } }}
+      >
+        {muted && <span className="seat-muted" aria-label="מושתק">🔇</span>}
         <Avatar name={label} size={46} />
         {!out && <span className="seat-count" aria-label={`${seat.cardCount} קלפים`}><bdi>{seat.cardCount}</bdi></span>}
         {out && <span className="seat-count place"><bdi>{seat.place}</bdi></span>}

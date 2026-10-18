@@ -1,6 +1,6 @@
 import {
   applyAutoExchange, applyChoices, applyPass, applyPlay, autoMove, chooseBotAction, chooseBotExchange, computeExchange,
-  deal, lowestCards, POINTS, rankIndex, scoreGame, DEFAULT_DECK, sortHand, startGame, titlesForOrder, viewFor,
+  botReaction, deal, EMOJI_COOLDOWN_MS, isEmoji, lowestCards, POINTS, rankIndex, scoreGame, DEFAULT_DECK, sortHand, startGame, titlesForOrder, viewFor,
   type Card, type DeckId, type ExchangePlan, type ExchangeView, type GameEvent, type GameState, type SeatInfo, type Title,
 } from '@asshole/shared';
 
@@ -21,6 +21,8 @@ export type RoomOptions = {
   graceMs?: number;
   /** זמן חסד לניתוק בחדר המתנה (רענון דף לא צריך להפיל את השולחן). יציאה יזומה היא מיידית. */
   waitGraceMs?: number;
+  /** אימוג'י אחד לכל X מילישניות לשחקן (ברירת מחדל 2000) */
+  emojiCooldownMs?: number;
   /** השהיית בוט לפני מהלך [מינימום, מקסימום] במילישניות */
   botDelayMs?: [number, number];
   /** זמן לבחירת קלפים בהחלפה (ברירת מחדל 30 שניות) */
@@ -96,6 +98,9 @@ export class GameRoom {
   /** מי שהשתתף במשחק הנוכחי (בהתחלה): לניקוד. כולל מי שיצא ובוט החליף אותו. */
   private gameHumans: { uid: string; isGuest: boolean }[] = [];
   private handNumber = 0;
+  private lastEmoji = new Map<string, number>();
+  private emojiSeq = 0;
+  private fxTimers = new Set<NodeJS.Timeout>();
   private session = { games: 0, rows: new Map<string, SessionRow>() };
   private botCounter = 0;
   private closed = false;
@@ -309,6 +314,8 @@ export class GameRoom {
     this.disarm();
     for (const t of this.exTimers) clearTimeout(t);
     this.exTimers.clear();
+    for (const t of this.fxTimers) clearTimeout(t);
+    this.fxTimers.clear();
     for (const t of this.graceTimers.values()) clearTimeout(t);
     this.graceTimers.clear();
   }
@@ -538,7 +545,7 @@ export class GameRoom {
 
   private commit(r: { state: GameState; events: GameEvent[] }) {
     this.state = r.state;
-    for (const e of r.events) this.broadcast('game:event', e);
+    for (const e of r.events) { this.broadcast('game:event', e); this.scheduleBotReaction(e); }
     this.publish();
     if (this.state.phase === 'finished') {
       this.disarm();
@@ -556,6 +563,36 @@ export class GameRoom {
       this.scoreFinishedGame(order);
       this.changed();
     } else this.armTimer();
+  }
+
+  /** אימוג'י משחקן: לכולם בשולחן, או "נזרק" על שחקן מסוים. מוגבל בקצב. */
+  emoji(uid: string, emoji: unknown, to?: unknown) {
+    const m = this.members.get(uid);
+    if (!m || m.isBot || !this.seats.includes(uid)) return;
+    if (!isEmoji(emoji)) return this.error(uid, 'bad_emoji', 'אימוג׳י לא תקין');
+    if (to != null && (typeof to !== 'string' || to === uid || !this.seats.includes(to))) return this.error(uid, 'bad_emoji', 'יעד לא תקין');
+    const now = Date.now();
+    if (now - (this.lastEmoji.get(uid) ?? 0) < (this.opts.emojiCooldownMs ?? EMOJI_COOLDOWN_MS)) {
+      return this.error(uid, 'emoji_rate', 'אימוג׳י אחד כל 2 שניות');
+    }
+    this.lastEmoji.set(uid, now);
+    this.broadcast('emoji:event', { id: ++this.emojiSeq, from: uid, to: (to as string | undefined) ?? null, emoji });
+  }
+
+  /** בוטים מגיבים לפעמים לאירוע (חיתוך / דילוג עליהם) */
+  private scheduleBotReaction(e: GameEvent) {
+    const bots = this.seats.filter((id): id is string => !!id && !!this.members.get(id)?.isBot);
+    const r = botReaction(e, bots);
+    if (!r) return;
+    const t = setTimeout(() => {
+      this.fxTimers.delete(t);
+      if (this.closed) return;
+      const now = Date.now();
+      if (now - (this.lastEmoji.get(r.from) ?? 0) < (this.opts.emojiCooldownMs ?? EMOJI_COOLDOWN_MS)) return;
+      this.lastEmoji.set(r.from, now);
+      this.broadcast('emoji:event', { id: ++this.emojiSeq, from: r.from, to: null, emoji: r.emoji });
+    }, r.delayMs);
+    this.fxTimers.add(t);
   }
 
   /** סיכום הסשן: נקרא בסוף כל משחק (תארים ונקודות לפי הדירוג הסופי, בלי קשר להאם המשחק נספר בדירוג הכללי) */

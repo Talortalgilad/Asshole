@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { Card, ExchangeView, GameEvent, GameOutcome, GameView, LeaderboardState, Profile } from '@asshole/shared';
+import type { Card, EmojiEvent, ExchangeView, GameEvent, GameOutcome, GameView, LeaderboardState, Profile } from '@asshole/shared';
+import { isPlayerMuted } from './emoji';
+import { sfx } from './sound';
 import { bannerFor, cardLabel, logLine, nameOf, type Banner } from './game';
 
 export type TableSeat = { uid: string; name: string; isBot: boolean; connected: boolean; photoURL?: string; isGuest?: boolean; rank?: number | null } | null;
@@ -55,6 +57,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const [exchange, setExchange] = useState<ExchangeView | null>(null);
   const [results, setResults] = useState<GameResult[] | null>(null);
   const [scored, setScored] = useState<GameOutcome | null>(null);
+  const [emojis, setEmojis] = useState<EmojiEvent[]>([]);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardState | null>(null);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -75,6 +78,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
     const resetTable = () => {
       viewRef.current = null;
       tableIdRef.current = null;
+      setEmojis([]);
       setTableId(null); setResumeTableId(null); setTable(null); setView(null); setExchange(null); setResults(null); setScored(null); setLog([]); setClosingPlay(null);
       setLeaving(false);
       leaveWaiters.current.splice(0).forEach((f) => f());
@@ -118,6 +122,13 @@ function useClientState(getAuth: AuthPayload, key: string) {
     });
     // סיכום הסשן מגיע לפני table:left / room:kicked / room:left, ולא נמחק עם איפוס השולחן
     socket.on('session:summary', (x: SessionSummary) => setSessionSummary(x));
+    // אימוג'ים: מוצגים 3 שניות; של שחקן מושתק לא מוצגים
+    socket.on('emoji:event', (e: EmojiEvent) => {
+      if (isPlayerMuted(e.from)) return;
+      setEmojis((l) => [...l, e].slice(-12));
+      if (e.to) sfx.pop();
+      setTimeout(() => setEmojis((l) => l.filter((x) => x !== e)), 3400);
+    });
     socket.on('exchange:state', (x: ExchangeView) => setExchange(x));
     socket.on('game:state', (v: GameView) => {
       const prev = viewRef.current;
@@ -199,6 +210,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
     /** האם היציאה האחרונה מהשולחן כבר מוסברת (לחיצה של המשתמש או הודעה)? קריאה מאפסת */
     consumeExplainedLeave: () => { const v = explainedLeave.current; explainedLeave.current = false; return v; },
     notify: (text: string) => setNotice({ id: ++noticeId.current, text }),
+    sendEmoji: (emoji: string, to?: string) => emit('emoji:send', { emoji, to }),
     addBot: (seat: number) => emit('room:addBot', { seat }),
     kick: (seat: number) => emit('room:kick', { seat }),
     start: () => emit('room:start'),
@@ -213,6 +225,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   return {
     connected, connectError, profile, profileError, deckError, lobby, tableId, resumeTableId, table, view, exchange, results, scored, leaderboard,
     banners, log, error, notice, closingPlay, leaving, actions,
+    emojis,
     clearNotice: () => setNotice(null),
     sessionSummary, clearSessionSummary: () => setSessionSummary(null),
   };

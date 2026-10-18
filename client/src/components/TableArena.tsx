@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Card, GameView } from '@asshole/shared';
+import type { Card, EmojiEvent, GameView } from '@asshole/shared';
 import type { CenterPlay } from '../lib/client';
 import { nameOf, opponentsInOrder } from '../lib/game';
 import { SLOT_VEC, jitterFor, reducedMotion, slotsFor, type Slot } from '../lib/table';
+import { EmojiLayer } from './EmojiFx';
 import { NeonCard } from './NeonCard';
 import { Seat } from './Seat';
 
@@ -17,7 +18,11 @@ type PlayM = { playerId: string; cards: Card[]; key: string; from: Slot | 'me' }
  * השולחן: משטח אובלי כהה במרכז, היריבים יושבים סביבו ואני בתחתית.
  * מהלכים עפים מהמושב למרכז ונוחתים בזווית אקראית וקבועה; סרייה שנסגרת נאספת לערימת "קלפים שיצאו".
  */
-export function TableArena({ view, closing }: { view: GameView; closing: CenterPlay }) {
+export function TableArena({ view, closing, emojis = [], targetId = null, mutedIds, onSeatTap, onSeatHold }: {
+  view: GameView; closing: CenterPlay; emojis?: EmojiEvent[]; targetId?: string | null;
+  mutedIds?: ReadonlySet<string>; onSeatTap?(id: string): void; onSeatHold?(id: string): void;
+}) {
+  const arenaRef = useRef<HTMLDivElement>(null);
   const opps = opponentsInOrder(view);
   const slots = slotsFor(opps.length);
   const slotOf = (id: string): Slot | 'me' => {
@@ -71,7 +76,7 @@ export function TableArena({ view, closing }: { view: GameView; closing: CenterP
   const lastPlayer = shown.length ? shown[shown.length - 1].playerId : null;
 
   return (
-    <div className="arena">
+    <div className="arena" ref={arenaRef}>
      <div className="table-plane">
       <div className="felt" aria-hidden="true" />
       <div className="felt-logo" aria-hidden="true">פריזידנט</div>
@@ -126,9 +131,14 @@ export function TableArena({ view, closing }: { view: GameView; closing: CenterP
         </div>
       )}
 
+      <EmojiLayer events={emojis} arenaRef={arenaRef} />
+
       {opps.map((s, i) => (
         <div key={s.id} className={`arena-seat slot-${slots[i]}`}>
-          <Seat seat={s} isTurn={view.phase === 'playing' && view.turn === s.id} passed={view.trick.passed.includes(s.id)} deadline={view.turnDeadline} />
+          <Seat
+            seat={s} isTurn={view.phase === 'playing' && view.turn === s.id} passed={view.trick.passed.includes(s.id)} deadline={view.turnDeadline}
+            target={targetId === s.id} muted={mutedIds?.has(s.id)} onTap={() => onSeatTap?.(s.id)} onHold={() => onSeatHold?.(s.id)}
+          />
         </div>
       ))}
     </div>

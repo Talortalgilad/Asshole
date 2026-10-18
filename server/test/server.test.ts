@@ -281,6 +281,49 @@ describe('יציאה', () => {
   });
 });
 
+describe('אימוג׳ים', () => {
+  it('נשלח לכולם בשולחן, או נזרק על שחקן; אימוג׳י לא מוכר נדחה', async () => {
+    const port = await start({ emojiCooldownMs: 120 });
+    const { clients } = await tableWith(port, 2);
+    const [a, b] = clients;
+    a.s.emit('emoji:send', { emoji: '😂' });
+    await until(() => a.emojis.length === 1 && b.emojis.length === 1);
+    expect(b.emojis[0]).toMatchObject({ from: a.uid, to: null, emoji: '😂' });
+    await new Promise((r) => setTimeout(r, 150));
+    a.s.emit('emoji:send', { emoji: '💩', to: b.uid });
+    await until(() => b.emojis.length === 2);
+    expect(b.emojis[1]).toMatchObject({ from: a.uid, to: b.uid, emoji: '💩' });
+    await new Promise((r) => setTimeout(r, 150));
+    a.s.emit('emoji:send', { emoji: '🐱' });
+    a.s.emit('emoji:send', { emoji: '🔥', to: 'nobody' });
+    await until(() => a.errorCodes().filter((c) => c === 'bad_emoji').length === 2);
+    expect(b.emojis).toHaveLength(2);
+  });
+
+  it('מגבלת קצב: אימוג׳י שני בתוך 2 שניות נדחה בשרת', async () => {
+    const port = await start();
+    const { clients } = await tableWith(port, 2);
+    const [a, b] = clients;
+    a.s.emit('emoji:send', { emoji: '🔥' });
+    a.s.emit('emoji:send', { emoji: '😎' });
+    await until(() => a.errorCodes().includes('emoji_rate'));
+    expect(b.emojis).toHaveLength(1);
+    // שחקן אחר לא מושפע
+    b.s.emit('emoji:send', { emoji: '😱' });
+    await until(() => a.emojis.length === 2);
+  });
+
+  it('מי שלא יושב בשולחן לא יכול לשלוח', async () => {
+    const port = await start();
+    const { clients } = await tableWith(port, 1);
+    const outsider = client(port, 9);
+    await until(() => outsider.profiles.length > 0);
+    outsider.s.emit('emoji:send', { emoji: '🔥' });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(clients[0].emojis).toHaveLength(0);
+  });
+});
+
 describe('סיכום סשן', () => {
   it('שלושה משחקים ברצף ואז יציאה: הספירות נכונות וסך התארים בכל עמודה = מספר המשחקים', async () => {
     const port = await start({ turnMs: 5 });

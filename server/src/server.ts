@@ -302,6 +302,7 @@ export function createGameServer(opts: ServerOptions = {}) {
       joinedTable()?.play(uid, p.cardIds as string[]);
     });
     socket.on('game:pass', () => joinedTable()?.pass(uid));
+    socket.on('emoji:send', (p?: { emoji?: unknown; to?: unknown }) => joinedTable()?.emoji(uid, p?.emoji, p?.to));
     socket.on('game:again', () => joinedTable()?.again(uid));
     socket.on('room:addBot', (p?: { seat?: number }) => joinedTable()?.addBot(uid, p?.seat));
     socket.on('room:kick', (p?: { seat?: number }) => {

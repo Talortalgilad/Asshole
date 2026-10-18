@@ -3,6 +3,7 @@ import { TITLE_LABEL, getLegalPlays, trickFromView } from '@asshole/shared';
 import { useClient } from '../lib/client';
 import { checkSelection, opponentsInOrder } from '../lib/game';
 import { buzz, sfx } from '../lib/sound';
+import { togglePlayerMuted, useMutedPlayers } from '../lib/emoji';
 import { reducedMotion, slotsFor } from '../lib/table';
 import { useNavGuard } from '../lib/nav';
 import { Banners } from './Banners';
@@ -11,6 +12,7 @@ import { Hand } from './Hand';
 import { NeonButton } from './NeonButton';
 import { Confetti } from './Confetti';
 import { DealAnimation } from './DealAnimation';
+import { EmojiTray } from './EmojiTray';
 import { TableArena } from './TableArena';
 import { RankChip, Seconds, TimerBar } from './ui';
 
@@ -59,6 +61,24 @@ export function GameScreen() {
   const endDeal = useCallback(() => setDealing(false), []);
   const dealSlots = useMemo(() => [...slotsFor(view.seats.length - 1), 'me' as const], [view.seats.length]);
 
+  // ---- אימוג'ים ----
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [target, setTarget] = useState<string | null>(null);
+  const [cooling, setCooling] = useState(false);
+  const mutedIds = useMutedPlayers();
+  const nameFor = (id: string) => view.seats.find((x) => x.id === id)?.name ?? '';
+  const sendEmoji = (emoji: string) => {
+    if (cooling) return;
+    c.actions.sendEmoji(emoji, target ?? undefined);
+    setTrayOpen(false); setTarget(null); setCooling(true);
+    setTimeout(() => setCooling(false), 2000);
+  };
+  const tapSeat = (id: string) => { setTarget((t) => (t === id ? null : id)); setTrayOpen(true); };
+  const holdSeat = (id: string) => {
+    const nowMuted = togglePlayerMuted(id);
+    c.actions.notify(nowMuted ? `האימוג׳ים של ${nameFor(id)} מושתקים אצלך` : `ביטלת השתקה ל-${nameFor(id)}`);
+  };
+
   const plays = view.trick.plays.length;
   const prevPlays = useRef(plays);
   useEffect(() => { if (plays > prevPlays.current) sfx.slide(); prevPlays.current = plays; }, [plays]);
@@ -89,7 +109,7 @@ export function GameScreen() {
       </div>
 
       <div className="relative flex min-h-[15.5rem] flex-1 flex-col">
-        <TableArena key={view.handNumber} view={view} closing={c.closingPlay} />
+        <TableArena key={view.handNumber} view={view} closing={c.closingPlay} emojis={c.emojis} targetId={target} mutedIds={mutedIds} onSeatTap={tapSeat} onSeatHold={holdSeat} />
         {dealing && <DealAnimation slots={dealSlots} deck={me.deck} onDone={endDeal} />}
       </div>
 
@@ -100,8 +120,10 @@ export function GameScreen() {
       )}
 
       <div className="flex flex-col gap-1 pb-3">
+        {trayOpen && <EmojiTray targetName={target ? nameFor(target) : null} cooling={cooling} onSend={sendEmoji} onClearTarget={() => setTarget(null)} />}
         <div className="flex items-center justify-between gap-2 px-4 text-sm" style={{ fontFamily: 'var(--font-he)' }}>
-          <span className={`flex items-center gap-2 px-2 py-0.5 font-extrabold ${myTurn ? 'turn-ring' : ''}`}>
+          <button type="button" className="emoji-toggle" aria-expanded={trayOpen} aria-label="אימוג׳ים" onClick={() => { setTrayOpen((v) => !v); if (trayOpen) setTarget(null); }}>😊</button>
+          <span data-seat={view.me} className={`flex items-center gap-2 px-2 py-0.5 font-extrabold ${myTurn ? 'turn-ring' : ''}`}>
             {me.title === 'president' && <span className="crown" aria-label="פריזידנט">👑</span>}
             {me.name} (אני) · {me.cardCount} קלפים
             <RankChip rank={me.rank} compact />
