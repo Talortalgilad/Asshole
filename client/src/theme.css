@@ -373,6 +373,15 @@
 .ncard.deck-classic.suit-H, .ncard.deck-classic.suit-D { --c: #c4283c; }
 .ncard.deck-classic.suit-C, .ncard.deck-classic.suit-S { --c: #1b2030; }
 .ncard.deck-classic { box-shadow: 0 1px calc(var(--w) * .08) rgba(0,0,0,.5); }
+/* אופניים: חפיסה רגילה, פנים לבנים-שמנת, אדום ושחור, גב אדום */
+.ncard.deck-bicycle {
+  --face-a: #fffefb; --face-b: #f0ebdf; --edge: #b7b09e;
+  --back-edge: #fffefb; --back-bg-a: #c4192a; --back-bg-b: #92101c; --back-a: #ffffff; --back-b: #ffdede;
+}
+.ncard.deck-bicycle.suit-H, .ncard.deck-bicycle.suit-D { --c: #d11f2f; }
+.ncard.deck-bicycle.suit-C, .ncard.deck-bicycle.suit-S { --c: #14141a; }
+.ncard.deck-bicycle { box-shadow: 0 1px calc(var(--w) * .08) rgba(0,0,0,.5); }
+.ncard.deck-bicycle.back { border-width: calc(var(--w) * .055); }
 
 .ncard.deck-minimal {
   --face-a: #101216; --face-b: #0a0b0e; --edge: #3a3f4a;
@@ -584,3 +593,49 @@
 
 .arena.watch .arena-note { top: 14%; bottom: auto; }
 .arena.watch .arena-note .label-dim { display: none; }
+
+
+/* ======================================================================
+   מראה "לבד ירוק": גרסה רגילה בלי ניאון. אותם רכיבים, צבעים אחרים:
+   לבד ירוק, שוליים מעץ, זהב-שמנת במקום ציאן, ובלי זוהר.
+   ====================================================================== */
+:root[data-theme='felt'] {
+  --bg-0: #082016;
+  --bg-1: #0c3321;
+  --violet: #17492f;
+  --violet-deep: #0e3624;
+  --cyan: #f0e2b0;        /* הדגשות: זהב-שמנת */
+  --magenta: #e5675c;     /* חיתוך / שגיאה: אדום חם */
+  --rose: #ff7078;
+  --ice: #f4f1e6;
+  --text: #f4f1e6;
+  --text-dim: #a9c6b4;
+  --glow: 0;
+  --grid-opacity: 0;
+  --font-neon: 'Heebo', system-ui, sans-serif;
+}
+:root[data-theme='felt'] .neon-root { background: radial-gradient(ellipse at 50% 30%, #12503a 0%, #0c3321 55%, #072016 100%); }
+:root[data-theme='felt'] .neon-bg::before { background: radial-gradient(ellipse 80% 50% at 50% 35%, rgba(70, 170, 110, .18), transparent 70%); }
+:root[data-theme='felt'] .neon-bg::after { display: none; }
+:root[data-theme='felt'] .felt {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .75  0 0 0 0 1  0 0 0 0 .8  0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 50% 45%, #2f9a5c 0%, #228050 40%, #146238 74%, #0b4527 100%);
+  background-blend-mode: soft-light, normal;
+  border: 11px solid #5a3818;
+  box-shadow:
+    0 0 0 2px #2c1a09,
+    inset 0 0 0 2px rgba(255, 220, 160, .28),
+    inset 0 0 40px rgba(0, 0, 0, .5),
+    0 18px 28px rgba(0, 0, 0, .55);
+}
+:root[data-theme='felt'] .felt::after { background: radial-gradient(ellipse 55% 38% at 50% 30%, rgba(255, 255, 255, .13), transparent 70%); }
+:root[data-theme='felt'] .felt-logo { color: rgba(255, 255, 255, .09); }
+:root[data-theme='felt'] .seat-name { background: rgba(6, 28, 18, .78); border-color: rgba(240, 226, 176, .35); }
+:root[data-theme='felt'] .seat-count { color: #08210f; }
+:root[data-theme='felt'] .appbar { background: #0a2a1a; border-bottom-color: rgba(240, 226, 176, .3); box-shadow: none; }
+:root[data-theme='felt'] .ncard.selected { outline: 2px solid var(--cyan); outline-offset: 1px; }
+:root[data-theme='felt'] .ncard.back { box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+:root[data-theme='felt'] .pile-play .ncard { box-shadow: 0 3px 8px rgba(0, 0, 0, .55); }
+:root[data-theme='felt'] .glitch::before, :root[data-theme='felt'] .glitch::after { display: none; }
+:root[data-theme='felt'] .flash-layer { display: none; }

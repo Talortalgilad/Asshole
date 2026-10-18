@@ -61,7 +61,7 @@ export function FirstDeckPicker({ onPick, onSkip, error }: { onPick(d: DeckId): 
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
       <div className="text-center">
         <h2 className="h-neon text-3xl">בחר חבילת קלפים</h2>
-        <p className="label-dim mt-1">שלוש חבילות פתוחות להתחלה. עוד חבילות נפתחות כשעולים בדרגות, ואפשר להחליף בכל עת בפרופיל.</p>
+        <p className="label-dim mt-1">ארבע חבילות פתוחות להתחלה. עוד חבילות נפתחות כשעולים בדרגות, ואפשר להחליף בכל עת בפרופיל.</p>
       </div>
       {error && <p role="alert" className="t-magenta text-center text-sm font-bold">{error}</p>}
       <ul className="flex flex-col gap-3">

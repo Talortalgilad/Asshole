@@ -19,8 +19,8 @@ type Props = {
 };
 
 /** גב הקלף: דוגמה לפי חבילה (מעגל מודפס / סריג / כוכבים), בצבעי החבילה */
-const BACK_KIND: Record<DeckId, 'circuit' | 'lattice' | 'stars'> = {
-  neon: 'circuit', ember: 'circuit', classic: 'lattice', minimal: 'lattice', gold: 'lattice', royal: 'lattice', galaxy: 'stars', crystal: 'stars',
+const BACK_KIND: Record<DeckId, 'circuit' | 'lattice' | 'stars' | 'bicycle'> = {
+  neon: 'circuit', ember: 'circuit', bicycle: 'bicycle', classic: 'lattice', minimal: 'lattice', gold: 'lattice', royal: 'lattice', galaxy: 'stars', crystal: 'stars',
 };
 
 function CardBackArt({ deck }: { deck: DeckId }) {
@@ -42,6 +42,12 @@ function CardBackArt({ deck }: { deck: DeckId }) {
             <circle className="bk-bf" cx="7" cy="7" r="1.2" opacity=".5" />
           </pattern>
         )}
+        {kind === 'bicycle' && (
+          <pattern id={pid} width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <path className="bk-a" d="M0 0H12M0 0V12" fill="none" strokeWidth=".9" opacity=".55" />
+            <circle className="bk-bf" cx="6" cy="6" r="1.1" opacity=".6" />
+          </pattern>
+        )}
         {kind === 'stars' && (
           <pattern id={pid} width="30" height="30" patternUnits="userSpaceOnUse">
             <path className="bk-bf" d="M7 5l1 2.4L10.4 8.4 8 9.4 7 12 6 9.4 3.6 8.4 6 7.4z" opacity=".7" />
@@ -53,7 +59,18 @@ function CardBackArt({ deck }: { deck: DeckId }) {
       </defs>
       <rect width="100" height="140" fill={`url(#${pid})`} />
       <rect className="bk-a" x="6" y="6" width="88" height="128" rx="6" fill="none" strokeWidth="1.4" opacity=".55" />
-      {kind === 'circuit' ? (
+      {kind === 'bicycle' ? (
+        <>
+          {/* מדליון עם אופניים, כמו בחפיסה הרגילה */}
+          <circle className="bk-b" cx="50" cy="70" r="24" fill="rgba(110,10,20,.85)" strokeWidth="2" />
+          <circle className="bk-a" cx="50" cy="70" r="20.5" fill="none" strokeWidth=".9" opacity=".9" />
+          <g className="bk-a" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="40.5" cy="74" r="6.2" />
+            <circle cx="59.5" cy="74" r="6.2" />
+            <path d="M40.5 74L47 63h8l4.5 11M47 63l3.5 11h-10M55 63l-1.5-3.5h4M47 63l-1.5-2.5h-3.5" />
+          </g>
+        </>
+      ) : kind === 'circuit' ? (
         <>
           <rect className="bk-b" x="31" y="50" width="38" height="40" rx="3" fill="#0a0918" strokeWidth="1.6" />
           <path className="bk-b" d="M38 50v-8M50 50v-8M62 50v-8M38 90v8M50 90v8M62 90v8M31 62h-8M31 78h-8M69 62h8M69 78h8" strokeWidth="1.5" strokeLinecap="round" opacity=".7" />

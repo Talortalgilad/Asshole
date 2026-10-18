@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DECKS, RANK_STEPS, isDeckId, isDeckUnlocked, newlyUnlocked } from '../src';
 
 describe('חבילות קלפים', () => {
-  it('שלוש חבילות חינם, וחמש שנפתחות בספי הדרגות', () => {
-    expect(DECKS.filter((d) => d.unlock === 0)).toHaveLength(3);
+  it('ארבע חבילות חינם, וחמש שנפתחות בספי הדרגות', () => {
+    expect(DECKS.filter((d) => d.unlock === 0)).toHaveLength(4);
     expect(DECKS.filter((d) => d.unlock > 0).map((d) => d.unlock)).toEqual(RANK_STEPS.slice(1).map((r) => r.min));
     expect(new Set(DECKS.map((d) => d.id)).size).toBe(DECKS.length);
   });

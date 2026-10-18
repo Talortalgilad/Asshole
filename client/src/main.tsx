@@ -7,6 +7,7 @@ import '@fontsource/heebo/hebrew-500.css';
 import '@fontsource/heebo/hebrew-800.css';
 import '@fontsource/heebo/hebrew-900.css';
 import './index.css';
+import './lib/theme'; // מחיל את המראה השמור לפני הרינדור
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 

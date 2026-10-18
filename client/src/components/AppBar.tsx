@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useClient } from '../lib/client';
 import { useNavGuard } from '../lib/nav';
 import { setMuted, useMuted } from '../lib/sound';
+import { setTheme, useTheme } from '../lib/theme';
 import { useSession } from '../lib/session';
 
 const Arrow = () => (
@@ -27,6 +28,7 @@ export function AppBar() {
   const session = useSession();
   const [open, setOpen] = useState(false);
   const muted = useMuted();
+  const theme = useTheme();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
@@ -72,6 +74,9 @@ export function AppBar() {
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/profile')}>👤 פרופיל</button>
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/decks')}>🃏 חבילות קלפים</button>
           <button className="menu-item" role="menuitem" onClick={() => guard.go('/leaderboard')}>🏆 טבלת אלופים</button>
+          <button className="menu-item" role="menuitem" onClick={() => { setTheme(theme === 'felt' ? 'neon' : 'felt'); setOpen(false); }}>
+            🎨 מראה: {theme === 'felt' ? 'עבור לניאון' : 'עבור ללבד ירוק'}
+          </button>
           {/* לשונית חדשה: לא מוציא מהשולחן */}
           <a className="menu-item" role="menuitem" href="/how-to" target="_blank" rel="noopener" onClick={() => setOpen(false)}>📖 איך משחקים</a>
           {!session.dev && <button className="menu-item danger" role="menuitem" onClick={() => { setOpen(false); guard.requestSignOut(); }}>⏻ התנתקות</button>}

@@ -1,14 +1,15 @@
 /**
- * חבילות קלפים (עיצובים). שלוש בסיסיות חינם, וחמש נפתחות לפי נקודות,
+ * חבילות קלפים (עיצובים). ארבע בסיסיות חינם, וחמש נפתחות לפי נקודות,
  * כל אחת בסף של דרגה (10 חבר מועצה, 30 ראש עיר, 60 שר, 100 ראש ממשלה, 200 נשיא).
  */
-export type DeckId = 'neon' | 'classic' | 'minimal' | 'gold' | 'galaxy' | 'crystal' | 'ember' | 'royal';
+export type DeckId = 'neon' | 'classic' | 'bicycle' | 'minimal' | 'gold' | 'galaxy' | 'crystal' | 'ember' | 'royal';
 
 export const DEFAULT_DECK: DeckId = 'neon';
 
 export const DECKS: readonly { id: DeckId; label: string; desc: string; unlock: number }[] = [
   { id: 'neon', label: 'ניאון', desc: 'כהה עם זוהר שקט', unlock: 0 },
   { id: 'classic', label: 'קלאסי', desc: 'פנים בהירים, אדום ושחור כמו בחפיסה רגילה', unlock: 0 },
+  { id: 'bicycle', label: 'אופניים', desc: 'חפיסה רגילה: פנים לבנים, אדום ושחור, וגב אדום עם אופניים', unlock: 0 },
   { id: 'minimal', label: 'מינימל', desc: 'כהה ונקי, בלי קישוטים', unlock: 0 },
   { id: 'gold', label: 'זהב', desc: 'זהב על חום עמוק', unlock: 10 },
   { id: 'galaxy', label: 'גלקסיה', desc: 'סגול עמוק וכוכבים', unlock: 30 },
