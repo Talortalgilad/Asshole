@@ -6,6 +6,7 @@ import { describeAuthError, withTimeout } from '../lib/authErrors';
 import { DEFAULT_DECK, deckInfo, rankIndex } from '@asshole/shared';
 import { Avatar, GuestTag, Mixed, Panel, RankChip, RankProgress } from './ui';
 import { NeonButton } from './NeonButton';
+import { ThemeSwitch } from './ThemeSwitch';
 
 type Props = {
   profile: Profile;
@@ -77,6 +78,7 @@ export function ProfileScreen({ profile, dev, error, onRename, onSignOut, onLink
       )}
 
       <div className="flex flex-col gap-3">
+        <ThemeSwitch />
         {profile.isGuest && (
           <>
             <NeonButton disabled={linking} onClick={link}>{linking ? 'פותח את Google…' : 'שמור את ההתקדמות עם Google'}</NeonButton>

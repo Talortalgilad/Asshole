@@ -65,6 +65,9 @@ export function AppBar() {
         <button className="icon-btn" onClick={back} aria-label="חזרה"><Arrow /></button>
       ) : <span className="inline-block w-[2.6rem]" />}
       <h1 className="h-neon min-w-0 flex-1 truncate text-center text-lg">{title}</h1>
+      <button className="icon-btn" onClick={() => setTheme(theme === 'felt' ? 'neon' : 'felt')} aria-label={theme === 'felt' ? 'עבור למראה ניאון' : 'עבור למראה לבד ירוק'} title="מראה">
+        <span aria-hidden="true">{theme === 'felt' ? '🌃' : '🟩'}</span>
+      </button>
       <button className="icon-btn" onClick={() => setMuted(!muted)} aria-label={muted ? 'הפעל קול' : 'השתק קול'} aria-pressed={muted}>
         <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
       </button>

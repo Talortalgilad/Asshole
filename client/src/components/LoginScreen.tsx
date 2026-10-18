@@ -6,7 +6,7 @@ import { NeonScreen } from './NeonBackground';
 import { NeonCard } from './NeonCard';
 import { Mixed } from './ui';
 import { useInstall } from '../lib/install';
-import { setTheme, useTheme } from '../lib/theme';
+import { ThemeSwitch } from './ThemeSwitch';
 
 const GoogleG = () => (
   <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
@@ -23,7 +23,6 @@ export function LoginScreen() {
   const [busy, setBusy] = useState<Busy>(null);
   const [err, setErr] = useState('');
   const inst = useInstall();
-  const theme = useTheme();
   const [howTo, setHowTo] = useState(false);
 
   const run = async (kind: Exclude<Busy, null>, fn: () => Promise<void>) => {
@@ -61,9 +60,7 @@ export function LoginScreen() {
         </div>
 
         <p className="neon-dim text-xs">אורחים משחקים כרגיל, אך לא מופיעים בטבלת האלופים.</p>
-        <button type="button" className="chip" style={{ cursor: 'pointer', padding: '.45rem 1rem' }} onClick={() => setTheme(theme === 'felt' ? 'neon' : 'felt')}>
-          🎨 מראה: {theme === 'felt' ? 'לבד ירוק (לחץ לניאון)' : 'ניאון (לחץ ללבד ירוק)'}
-        </button>
+        <div className="w-full max-w-[17rem]"><ThemeSwitch /></div>
         <a href="/how-to" className="neon-dim text-sm underline" style={{ textUnderlineOffset: 3 }}>📖 איך משחקים?</a>
         {!inst.hidden && (
           <div className="flex flex-col items-center gap-2">
