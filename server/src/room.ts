@@ -1,6 +1,6 @@
 import {
   applyAutoExchange, applyChoices, applyPass, applyPlay, autoMove, chooseBotAction, chooseBotExchange, computeExchange,
-  deal, lowestCards, rankIndex, scoreGame, DEFAULT_DECK, sortHand, startGame, titlesForOrder, viewFor,
+  deal, lowestCards, POINTS, rankIndex, scoreGame, DEFAULT_DECK, sortHand, startGame, titlesForOrder, viewFor,
   type Card, type DeckId, type ExchangePlan, type ExchangeView, type GameEvent, type GameState, type SeatInfo, type Title,
 } from '@asshole/shared';
 
@@ -50,6 +50,16 @@ export type GameResultRow = {
   uid: string; name: string; isBot: boolean; replaced: boolean; place: number; title: Title | null;
 };
 
+/** סיכום סשן (רצף המשחקים בשולחן): שורה לכל שחקן שהשתתף, כולל בוטים */
+export type SessionRow = {
+  uid: string; name: string; isBot: boolean;
+  titles: Record<Title, number>;
+  points: number;
+  /** כמה משחקים שיחק בסשן, ובאיזה משחק הצטרף (1 = מההתחלה) */
+  games: number; joinedAtGame: number;
+};
+export type SessionSummary = { games: number; players: number; rows: SessionRow[] };
+
 type Exchange = {
   stage: 'choose' | 'review';
   handNumber: number;
@@ -86,6 +96,7 @@ export class GameRoom {
   /** מי שהשתתף במשחק הנוכחי (בהתחלה): לניקוד. כולל מי שיצא ובוט החליף אותו. */
   private gameHumans: { uid: string; isGuest: boolean }[] = [];
   private handNumber = 0;
+  private session = { games: 0, rows: new Map<string, SessionRow>() };
   private botCounter = 0;
   private closed = false;
 
@@ -188,7 +199,7 @@ export class GameRoom {
     if (!target) return this.error(uid, 'empty_seat', 'המושב ריק');
     if (target === uid) return this.error(uid, 'self_kick', 'אי אפשר להוציא את עצמך');
     this.removeMember(target);
-    if (!target.startsWith('bot:')) this.opts.send(target, 'room:kicked', {});
+    if (!target.startsWith('bot:')) { this.sendSummary(target); this.opts.send(target, 'room:kicked', {}); }
     this.publish();
     this.changed();
   }
@@ -224,6 +235,7 @@ export class GameRoom {
     const m = this.members.get(uid);
     if (!m || m.isBot || this.closed) return;
     this.clearGrace(uid);
+    this.sendSummary(uid);
     if (this.ex || this.state?.phase === 'playing') return this.forfeit(uid);
     this.removeMember(uid);
     if (this.closed) return;
@@ -539,10 +551,46 @@ export class GameRoom {
           place: i + 1, title: this.titles?.[uid] ?? null,
         };
       });
+      this.recordSession(order);
       this.broadcast('game:over', { results });
       this.scoreFinishedGame(order);
       this.changed();
     } else this.armTimer();
+  }
+
+  /** סיכום הסשן: נקרא בסוף כל משחק (תארים ונקודות לפי הדירוג הסופי, בלי קשר להאם המשחק נספר בדירוג הכללי) */
+  private recordSession(order: string[]) {
+    if (!this.titles) return;
+    this.session.games += 1;
+    for (const uid of order) {
+      const title = this.titles[uid];
+      if (!title) continue;
+      const m = this.members.get(uid);
+      let row = this.session.rows.get(uid);
+      if (!row) {
+        row = {
+          uid, name: m ? this.displayName(m) : uid, isBot: !!m && m.isBot && !m.replaced,
+          titles: { president: 0, vicePresident: 0, middle: 0, viceAsshole: 0, asshole: 0 },
+          points: 0, games: 0, joinedAtGame: this.session.games,
+        };
+        this.session.rows.set(uid, row);
+      }
+      if (m) row.name = this.displayName(m);
+      row.titles[title] += 1;
+      row.points += POINTS[title];
+      row.games += 1;
+    }
+  }
+
+  sessionSummary(): SessionSummary {
+    const rows = [...this.session.rows.values()].map((r) => ({ ...r, titles: { ...r.titles } }));
+    rows.sort((a, b) => b.points - a.points || b.titles.president - a.titles.president);
+    return { games: this.session.games, players: this.opts.players, rows };
+  }
+
+  /** שולח את סיכום הסשן למי שיוצא מהשולחן (רק אם שוחק לפחות משחק אחד) */
+  private sendSummary(uid: string) {
+    if (this.session.games > 0) this.opts.send(uid, 'session:summary', this.sessionSummary());
   }
 
   /** ניקוד (סעיפים 12/14): שמירה ב-store, ואז תוצאה אישית לכל שחקן אנושי (כולל מי שיצא) */

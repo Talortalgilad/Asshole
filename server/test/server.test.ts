@@ -281,6 +281,46 @@ describe('יציאה', () => {
   });
 });
 
+describe('סיכום סשן', () => {
+  it('שלושה משחקים ברצף ואז יציאה: הספירות נכונות וסך התארים בכל עמודה = מספר המשחקים', async () => {
+    const port = await start({ turnMs: 5 });
+    const { clients } = await tableWith(port, 1);
+    const host = clients[0];
+    for (let i = 0; i < 3; i++) host.s.emit('room:addBot', {});
+    await until(() => host.table.seats.every(Boolean));
+    host.s.emit('room:start');
+    for (let g = 1; g <= 3; g++) {
+      await until(() => host.over !== null, 30_000);
+      if (g < 3) {
+        host.over = null;
+        host.s.emit('game:again');
+        await until(() => host.views.some((v) => v.handNumber === g + 1), 30_000);
+      }
+    }
+    host.s.emit('table:leave');
+    await until(() => host.summary !== null);
+    const sm = host.summary;
+    expect(sm.games).toBe(3);
+    expect(sm.rows).toHaveLength(4);
+    for (const t of ['president', 'vicePresident', 'viceAsshole', 'asshole']) {
+      expect(sm.rows.reduce((a: number, r: any) => a + r.titles[t], 0)).toBe(3);
+    }
+    expect(sm.rows.every((r: any) => r.games === 3 && r.joinedAtGame === 1)).toBe(true);
+    expect(sm.rows.filter((r: any) => r.isBot)).toHaveLength(3);
+    // ממוין לפי נקודות
+    const pts = sm.rows.map((r: any) => r.points);
+    expect([...pts].sort((a, b) => b - a)).toEqual(pts);
+  });
+
+  it('בלי משחקים אין סיכום', async () => {
+    const port = await start();
+    const { clients } = await tableWith(port, 1);
+    clients[0].s.emit('table:leave');
+    await until(() => clients[0].left > 0);
+    expect(clients[0].summary).toBeNull();
+  });
+});
+
 describe('/health', () => {
   it('מחזיר 200', async () => {
     const port = await start();

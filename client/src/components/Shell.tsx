@@ -9,6 +9,7 @@ import { SessionCtx, useSession, type Session } from '../lib/session';
 import { useAuth } from '../lib/useAuth';
 import { AppBar } from './AppBar';
 import { ConfirmDialog } from './ConfirmDialog';
+import { SessionSummary } from './SessionSummary';
 import { LoginScreen } from './LoginScreen';
 import { NameScreen } from './NameScreen';
 import { NeonScreen } from './NeonBackground';
@@ -222,6 +223,10 @@ function Frame({ extraNotice = '', onNoticeShown }: { extraNotice?: string; onNo
           <div role="status" onClick={() => setToast('')} className="fixed inset-x-3 top-16 z-50 mx-auto max-w-md cursor-pointer">
             <div className="row-card active px-4 py-3 text-center text-sm font-bold" style={{ background: 'var(--bg-1)', fontFamily: 'var(--font-he)' }}>{toast}</div>
           </div>
+        )}
+
+        {c.sessionSummary && (
+          <SessionSummary summary={c.sessionSummary} myUid={c.profile?.uid} onClose={c.clearSessionSummary} />
         )}
 
         {pending && (

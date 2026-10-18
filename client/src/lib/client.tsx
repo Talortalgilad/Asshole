@@ -8,6 +8,11 @@ export type TableState = {
   tableId: string; name: string; isPrivate: boolean; inviteCode: string | null;
   needed: number; phase: string; hostId: string | null; seats: TableSeat[];
 };
+export type SessionRow = {
+  uid: string; name: string; isBot: boolean; points: number; games: number; joinedAtGame: number;
+  titles: Record<'president' | 'vicePresident' | 'middle' | 'viceAsshole' | 'asshole', number>;
+};
+export type SessionSummary = { games: number; players: number; rows: SessionRow[] };
 export type LobbyTable = { id: string; name: string; players: number; humans: number; max: number; phase: string; hostName: string; isPrivate: boolean };
 export type LobbyUser = { uid: string; name: string; photoURL: string; isGuest: boolean; rank: number; at: string | null };
 export type LobbyState = { tables: LobbyTable[]; online: LobbyUser[] };
@@ -50,6 +55,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
   const [exchange, setExchange] = useState<ExchangeView | null>(null);
   const [results, setResults] = useState<GameResult[] | null>(null);
   const [scored, setScored] = useState<GameOutcome | null>(null);
+  const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardState | null>(null);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [log, setLog] = useState<string[]>([]);
@@ -110,6 +116,8 @@ function useClientState(getAuth: AuthPayload, key: string) {
       if (t.phase === 'waiting') { viewRef.current = null; setView(null); setExchange(null); setResults(null); setScored(null); setLog([]); }
       if (t.phase === 'exchange') { viewRef.current = null; setView(null); setResults(null); setScored(null); }
     });
+    // סיכום הסשן מגיע לפני table:left / room:kicked / room:left, ולא נמחק עם איפוס השולחן
+    socket.on('session:summary', (x: SessionSummary) => setSessionSummary(x));
     socket.on('exchange:state', (x: ExchangeView) => setExchange(x));
     socket.on('game:state', (v: GameView) => {
       const prev = viewRef.current;
@@ -206,6 +214,7 @@ function useClientState(getAuth: AuthPayload, key: string) {
     connected, connectError, profile, profileError, deckError, lobby, tableId, resumeTableId, table, view, exchange, results, scored, leaderboard,
     banners, log, error, notice, closingPlay, leaving, actions,
     clearNotice: () => setNotice(null),
+    sessionSummary, clearSessionSummary: () => setSessionSummary(null),
   };
 }
 

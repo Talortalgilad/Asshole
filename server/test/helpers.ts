@@ -19,7 +19,7 @@ export function mkClient(port: number, auth: Record<string, unknown>, sockets: S
     views: [] as GameView[], tables: [] as any[], lobbies: [] as any[], errors: [] as any[], exchanges: [] as any[],
     profiles: [] as any[], profileErrors: [] as any[], joined: [] as any[], left: 0, kicked: false, over: null as any,
     events: [] as any[], connectError: null as string | null,
-    scored: null as any, leaderboard: null as any, deckErrors: [] as any[],
+    scored: null as any, summary: null as any, leaderboard: null as any, deckErrors: [] as any[],
     get table() { return c.tables[c.tables.length - 1]; },
     get view() { return c.views[c.views.length - 1]; },
     get lobby() { return c.lobbies[c.lobbies.length - 1]; },
@@ -39,6 +39,7 @@ export function mkClient(port: number, auth: Record<string, unknown>, sockets: S
   s.on('game:over', (o) => (c.over = o));
   s.on('game:event', (e) => c.events.push(e));
   s.on('game:scored', (o) => (c.scored = o));
+  s.on('session:summary', (x) => (c.summary = x));
   s.on('deck:error', (e) => c.deckErrors.push(e));
   s.on('leaderboard:state', (l) => (c.leaderboard = l));
   s.on('connect_error', (e) => (c.connectError = e.message));
