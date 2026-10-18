@@ -35,16 +35,16 @@ export function opponentsInOrder(view: GameView) {
 
 export const nameOf = (view: GameView | null, id: string) => view?.seats.find((s) => s.id === id)?.name ?? id;
 
-export type Banner = { id: number; text: string; tone: 'info' | 'cut' | 'warn' | 'good' };
+export type Banner = { id: number; text: string; tone: 'info' | 'cut' | 'warn' | 'good'; type: GameEvent['type'] };
 
 export function bannerFor(e: GameEvent, view: GameView | null): Omit<Banner, 'id'> {
   switch (e.type) {
-    case 'cut': return { text: `✂️ חתך! ${nameOf(view, e.playerId)}`, tone: 'cut' };
-    case 'skip': return { text: `⏭️ דילוג! ${nameOf(view, e.skippedId)} מדולג`, tone: 'warn' };
-    case 'four': return { text: '🔁 רביעייה – סיבוב חדש', tone: 'good' };
-    case 'allPassed': return { text: 'כולם פס – סיבוב חדש', tone: 'info' };
-    case 'mustLower': return { text: '⬇️ יורדים – מתחת ל-7 (או 7)', tone: 'warn' };
-    case 'playerOut': return { text: `🏁 ${nameOf(view, e.playerId)} – מקום ${e.place}`, tone: 'good' };
+    case 'cut': return { type: e.type, text: `✂️ חתך! ${nameOf(view, e.playerId)}`, tone: 'cut' };
+    case 'skip': return { type: e.type, text: `⏭️ דילוג! ${nameOf(view, e.skippedId)} מדולג`, tone: 'warn' };
+    case 'four': return { type: e.type, text: '🔁 רביעייה – סיבוב חדש', tone: 'good' };
+    case 'allPassed': return { type: e.type, text: 'כולם פס – סיבוב חדש', tone: 'info' };
+    case 'mustLower': return { type: e.type, text: '⬇️ יורדים – מתחת ל-7 (או 7)', tone: 'warn' };
+    case 'playerOut': return { type: e.type, text: `🏁 ${nameOf(view, e.playerId)} – מקום ${e.place}`, tone: 'good' };
   }
 }
 

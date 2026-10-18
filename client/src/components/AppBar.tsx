@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useClient } from '../lib/client';
 import { useNavGuard } from '../lib/nav';
+import { setMuted, useMuted } from '../lib/sound';
 import { useSession } from '../lib/session';
 
 const Arrow = () => (
@@ -25,6 +26,7 @@ export function AppBar() {
   const guard = useNavGuard();
   const session = useSession();
   const [open, setOpen] = useState(false);
+  const muted = useMuted();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
@@ -60,6 +62,9 @@ export function AppBar() {
         <button className="icon-btn" onClick={back} aria-label="חזרה"><Arrow /></button>
       ) : <span className="inline-block w-[2.6rem]" />}
       <h1 className="h-neon min-w-0 flex-1 truncate text-center text-lg">{title}</h1>
+      <button className="icon-btn" onClick={() => setMuted(!muted)} aria-label={muted ? 'הפעל קול' : 'השתק קול'} aria-pressed={muted}>
+        <span aria-hidden="true">{muted ? '🔇' : '🔊'}</span>
+      </button>
       <button className="icon-btn" onClick={() => setOpen((v) => !v)} aria-label="תפריט" aria-expanded={open} aria-haspopup="menu"><Burger /></button>
       {open && (
         <div className="menu-pop" role="menu">

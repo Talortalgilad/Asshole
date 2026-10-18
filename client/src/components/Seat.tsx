@@ -10,6 +10,7 @@ export function Seat({ seat, isTurn, passed, deadline }: Props) {
     <div className={`row-card relative flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 py-2 text-center ${isTurn ? 'turn-ring' : ''}`}
       style={{ opacity: seat.connected ? (out ? 0.7 : 1) : 0.5, background: isTurn ? 'color-mix(in srgb, var(--cyan) 8%, var(--bg-1))' : undefined }}>
       <div className="flex max-w-full items-center justify-center gap-1" style={{ fontFamily: 'var(--font-he)' }}>
+        {seat.title === 'president' && <span className="crown" aria-label="פריזידנט">👑</span>}
         <span className="truncate text-sm font-extrabold">{seat.name}</span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-1">

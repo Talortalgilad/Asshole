@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TITLE_LABEL, getLegalPlays, trickFromView } from '@asshole/shared';
 import { useClient } from '../lib/client';
 import { checkSelection, opponentsInOrder } from '../lib/game';
+import { buzz, sfx } from '../lib/sound';
+import { reducedMotion, slotsFor } from '../lib/table';
 import { useNavGuard } from '../lib/nav';
 import { Banners } from './Banners';
 import { FinishScreen } from './FinishScreen';
 import { Hand } from './Hand';
 import { NeonButton } from './NeonButton';
-import { Seat } from './Seat';
-import { TableCenter } from './TableCenter';
+import { Confetti } from './Confetti';
+import { DealAnimation } from './DealAnimation';
+import { TableArena } from './TableArena';
 import { RankChip, Seconds, TimerBar } from './ui';
+
+// איזה משחק כבר הוצגה לו חלוקה (כדי שרענון באמצע משחק לא יריץ אותה שוב)
+let dealtKey = '';
 
 export function GameScreen() {
   const c = useClient();
@@ -42,6 +48,35 @@ export function GameScreen() {
   const play = () => { if (myTurn && check.ok) { c.actions.play([...selected]); setSelected(new Set()); } };
   const hint = !myTurn ? '' : selected.size === 0 ? (view.trick.count === null ? 'בחר קלפים לפתיחה' : 'בחר קלפים או עשה פס') : check.ok ? '' : check.reason;
   const isHost = c.table?.hostId === view.me;
+
+  // ---- חלוקה, צלילים ורטט ----
+  const [dealing, setDealing] = useState(() => {
+    const key = `${c.tableId}:${view.handNumber}`;
+    if (!view.firstMove || dealtKey === key || reducedMotion()) { dealtKey = key; return false; }
+    dealtKey = key;
+    return true;
+  });
+  const endDeal = useCallback(() => setDealing(false), []);
+  const dealSlots = useMemo(() => [...slotsFor(view.seats.length - 1), 'me' as const], [view.seats.length]);
+
+  const plays = view.trick.plays.length;
+  const prevPlays = useRef(plays);
+  useEffect(() => { if (plays > prevPlays.current) sfx.slide(); prevPlays.current = plays; }, [plays]);
+  useEffect(() => { if (c.closingPlay) sfx.slide(); }, [c.closingPlay]);
+  const lastBanner = c.banners[c.banners.length - 1];
+  useEffect(() => {
+    if (!lastBanner) return;
+    if (lastBanner.type === 'cut') sfx.cut();
+    else if (lastBanner.type === 'skip') sfx.skip();
+    else if (lastBanner.type === 'four') sfx.four();
+  }, [lastBanner?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const wasMyTurn = useRef(false);
+  useEffect(() => {
+    if (myTurn && !wasMyTurn.current && !dealing) { sfx.turn(); buzz(45); }
+    wasMyTurn.current = myTurn;
+  }, [myTurn, dealing]);
+  const won = view.phase === 'finished' && me.place === 1;
+  useEffect(() => { if (won) sfx.win(); }, [won]);
   const turnName = view.seats.find((s) => s.id === view.turn)?.name ?? '';
 
   return (
@@ -53,13 +88,10 @@ export function GameScreen() {
         <button onClick={() => setShowLog((v) => !v)} className="chip ghost" style={{ cursor: 'pointer' }} aria-expanded={showLog}>{showLog ? 'הסתר יומן' : 'יומן מהלכים'}</button>
       </div>
 
-      <div className="flex justify-center gap-2 px-2 pt-2">
-        {opponentsInOrder(view).map((s) => (
-          <Seat key={s.id} seat={s} isTurn={view.phase === 'playing' && view.turn === s.id} passed={view.trick.passed.includes(s.id)} deadline={view.turnDeadline} />
-        ))}
+      <div className="relative flex min-h-[15.5rem] flex-1 flex-col">
+        <TableArena key={view.handNumber} view={view} closing={c.closingPlay} />
+        {dealing && <DealAnimation slots={dealSlots} deck={me.deck} onDone={endDeal} />}
       </div>
-
-      <TableCenter view={view} closing={c.closingPlay} />
 
       {showLog && (
         <div className="row-card absolute inset-x-2 top-12 z-30 max-h-56 overflow-auto p-3 text-sm" role="log" style={{ background: 'var(--bg-1)', fontFamily: 'var(--font-he)' }}>
@@ -70,6 +102,7 @@ export function GameScreen() {
       <div className="flex flex-col gap-1 pb-3">
         <div className="flex items-center justify-between gap-2 px-4 text-sm" style={{ fontFamily: 'var(--font-he)' }}>
           <span className={`flex items-center gap-2 px-2 py-0.5 font-extrabold ${myTurn ? 'turn-ring' : ''}`}>
+            {me.title === 'president' && <span className="crown" aria-label="פריזידנט">👑</span>}
             {me.name} (אני) · {me.cardCount} קלפים
             <RankChip rank={me.rank} compact />
             {me.title && <span className="chip ghost">{TITLE_LABEL[me.title]}</span>}
@@ -84,6 +117,8 @@ export function GameScreen() {
           <div className="flex-1"><NeonButton tone="dim" disabled={!canPass} onClick={c.actions.pass}>פס</NeonButton></div>
         </div>
       </div>
+
+      {won && <Confetti />}
 
       {view.phase === 'finished' && c.results && (
         <FinishScreen
